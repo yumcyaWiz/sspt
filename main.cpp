@@ -177,13 +177,16 @@ struct Image {
 };
 
 
+struct Sphere;
 struct Hit {
     float t;
     Vec3 hitPos;
     Vec3 hitNormal;
+    const Sphere* hitSphere;
 
     Hit() {
         t = 1000000;
+        hitSphere = nullptr;
     };
 };
 
@@ -191,8 +194,10 @@ struct Hit {
 struct Sphere {
     Vec3 center;
     float radius;
+    std::string type;
+    Vec3 color;
 
-    Sphere(const Vec3& center, float radius) : center(center), radius(radius) {};
+    Sphere(const Vec3& center, float radius, const std::string& type, const Vec3& color) : center(center), radius(radius), type(type), color(color) {};
 
     bool intersect(const Ray& ray, Hit& res) const {
         float a = ray.direction.length2();
@@ -213,6 +218,7 @@ struct Sphere {
         res.t = t;
         res.hitPos = ray(t);
         res.hitNormal = normalize(res.hitPos - center);
+        res.hitSphere = this;
 
         return true;
     };
@@ -317,7 +323,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0) {
         Vec3 nextDir = randomCosineHemisphere(pdf, res.hitNormal);
         Ray nextRay(res.hitPos + 0.001f*res.hitNormal, nextDir);
         float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
-        return 1/pdf * Vec3(0.8, 0.8, 0.8)/M_PI * cos_term * getRadiance(nextRay, depth + 1);
+        return 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1);
     }
     else {
         return Vec3(1, 1, 1);
@@ -347,8 +353,8 @@ int main() {
     Image img(512, 512);
     Camera cam(Vec3(0, 0, -3), Vec3(0, 0, 1));
 
-    accel.add(std::make_shared<Sphere>(Vec3(0, 0, 0), 1.0));
-    accel.add(std::make_shared<Sphere>(Vec3(0, -10001, 0), 10000));
+    accel.add(std::make_shared<Sphere>(Vec3(0, 0, 0), 1.0, "diffuse", Vec3(0, 0.8, 0)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, -10001, 0), 10000, "diffuse", Vec3(0.8, 0.8, 0.8)));
 
 #pragma omp parallel for schedule(dynamic, 1)
     for(int k = 0; k < samples; k++) {
