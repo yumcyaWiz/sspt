@@ -185,6 +185,23 @@ struct Sphere {
 };
 
 
+struct Camera {
+    Vec3 camPos;
+    Vec3 camForward;
+    Vec3 camRight;
+    Vec3 camUp;
+
+    Camera(const Vec3& camPos, const Vec3& camForward) : camPos(camPos), camForward(camForward) {
+        camRight = -normalize(cross(camForward, Vec3(0, 1, 0)));
+        camUp = normalize(cross(camRight, camForward));
+    };
+
+    Ray getRay(float u, float v) const {
+        return Ray(camPos, normalize(camForward + u*camRight + v*camUp));
+    };
+};
+
+
 
 int main() {
     Image img(512, 512);
