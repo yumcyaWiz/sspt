@@ -8,4 +8,4 @@ make
 ```
 
 ## Example
-![]("img/output.png")
+![](img/output.png)
