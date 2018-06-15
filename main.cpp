@@ -77,6 +77,14 @@ inline Vec3 cross(const Vec3& v1, const Vec3& v2) {
 }
 
 
+struct Ray {
+    Vec3 origin;
+    Vec3 direction;
+
+    Ray(const Vec3& origin, const Vec3& direction) : origin(origin), direction(direction) {};
+};
+
+
 int main() {
     Vec3 v1(1, 1, 1);
     Vec3 v2(2, 2, 2);
