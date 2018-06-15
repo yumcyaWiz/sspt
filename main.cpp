@@ -98,7 +98,21 @@ inline Vec3 pow(const Vec3& v, float n) {
 }
 
 inline Vec3 reflect(const Vec3& v, const Vec3& n) {
-    return v - 2*dot(v, n)*n;
+    return normalize(v - 2.0f*dot(v, n)*n);
+}
+inline float fresnel(const Vec3& v, const Vec3& n, float n1, float n2) {
+    float f0 = std::pow((n1 - n2)/(n1 + n2), 2.0f);
+    return f0 + (1.0f - f0)*std::pow(1.0f - dot(v, n), 5.0f);
+}
+inline bool refract(const Vec3& v, const Vec3& n, float n1, float n2, Vec3& r) {
+    float eta = n1/n2;
+    float eta2 = eta*eta;
+    float cosI = std::max(dot(-v, n), 0.0f);
+    float sin2I = std::max(1.0f - cosI*cosI, 0.0f);
+    if(sin2I >= 1) return false;
+    float cosT = std::sqrt(1.0f - eta2*sin2I);
+    r = normalize(eta*v + (eta*cosI - cosT)*n);
+    return true;
 }
 
 
@@ -187,10 +201,12 @@ struct Hit {
     Vec3 hitPos;
     Vec3 hitNormal;
     const Sphere* hitSphere;
+    bool inside;
 
     Hit() {
         t = 1000000;
         hitSphere = nullptr;
+        inside = false;
     };
 };
 
@@ -223,6 +239,7 @@ struct Sphere {
         res.hitPos = ray(t);
         res.hitNormal = normalize(res.hitPos - center);
         res.hitSphere = this;
+        res.inside = dot(ray.direction, res.hitNormal) > 0 ? true : false;
 
         return true;
     };
@@ -260,8 +277,8 @@ struct Accel {
         for(auto sphere : spheres) {
             Hit res_each;
             if(sphere->intersect(ray, res_each)) {
-                isHit = true;
-                if(res_each.t < res.t || !isHit) {
+                if(res_each.t < res.t) {
+                    isHit = true;
                     res = res_each;
                 }
             }
@@ -318,22 +335,75 @@ inline Vec3 randomCosineHemisphere(float &pdf, const Vec3& n) {
 Accel accel;
 
 
-Vec3 getRadiance(const Ray& ray, int depth = 0) {
-    if(depth == 10) return Vec3(0, 0, 0);
+const float eps = 0.005f;
+Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
+    float r = rnd();
+    if(r >= roulette) {
+        return Vec3(0, 0, 0);
+    }
+
+    if(depth > 10) {
+        roulette *= 0.9f;
+    }
 
     Hit res;
     if(accel.intersect(ray, res)) {
         if(res.hitSphere->type == "diffuse") {
             float pdf;
             Vec3 nextDir = randomCosineHemisphere(pdf, res.hitNormal);
-            Ray nextRay(res.hitPos + 0.01f*res.hitNormal, nextDir);
+            Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
             float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
-            return 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1);
+            return 1/roulette * 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
         }
         else if(res.hitSphere->type == "mirror") {
             Vec3 nextDir = reflect(ray.direction, res.hitNormal);
-            Ray nextRay(res.hitPos + 0.01f*res.hitNormal, nextDir);
-            return res.hitSphere->color * getRadiance(nextRay, depth + 1);
+            Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
+            return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+        }
+        else if(res.hitSphere->type == "glass") {
+            if(!res.inside) {
+                float fr = fresnel(-ray.direction, res.hitNormal, 1.0f, 1.4f);
+                //reflect
+                if(rnd() < fr) {
+                    Vec3 nextDir = reflect(ray.direction, res.hitNormal);
+                    Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
+                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                }
+                else {
+                    Vec3 nextDir;
+                    if(refract(ray.direction, res.hitNormal, 1.0f, 1.4f, nextDir)) {
+                        Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
+                        return 1/roulette * std::pow(1.4f/1.0f, 2.0f) * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                    }
+                    else {
+                        std::cerr << "Something Wrong!!" << std::endl;
+                        return Vec3(0, 0, 0);
+                    }
+                }
+            }
+            else {
+                float fr = fresnel(-ray.direction, -res.hitNormal, 1.4f, 1.0f);
+                //reflect
+                if(rnd() < fr) {
+                    Vec3 nextDir = reflect(ray.direction, -res.hitNormal);
+                    Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
+                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                }
+                //refract
+                else {
+                    Vec3 nextDir;
+                    if(refract(ray.direction, -res.hitNormal, 1.4f, 1.0f, nextDir)) {
+                        Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
+                        return 1/roulette * std::pow(1.0f/1.4f, 2.0f) * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                    }
+                    //total reflection
+                    else {
+                        nextDir = reflect(ray.direction, -res.hitNormal);
+                        Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
+                        return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                    }
+                }
+            }
         }
         else if(res.hitSphere->type == "light") {
             return res.hitSphere->color;
@@ -373,20 +443,20 @@ int main() {
     //Walls
     accel.add(std::make_shared<Sphere>(Vec3(0, -10000, 0), 10000, "diffuse", Vec3(0.8)));
     accel.add(std::make_shared<Sphere>(Vec3(0, 10003, 0), 10000, "diffuse", Vec3(0.8)));
-    accel.add(std::make_shared<Sphere>(Vec3(10001.5, 0, 0), 10000, "diffuse", Vec3(0, 0.2, 0.8)));
-    accel.add(std::make_shared<Sphere>(Vec3(-10001.5, 0, 0), 10000, "diffuse", Vec3(0.8, 0.2, 0)));
+    accel.add(std::make_shared<Sphere>(Vec3(10001.5, 0, 0), 10000, "diffuse", Vec3(0.25, 0.5, 1.0)));
+    accel.add(std::make_shared<Sphere>(Vec3(-10001.5, 0, 0), 10000, "diffuse", Vec3(1.0, 0.3, 0.3)));
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
     accel.add(std::make_shared<Sphere>(Vec3(0, 3, 2.5), 0.5, "light", Vec3(10)));
 
     //Spheres
-    accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(0.8)));
-    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "mirror", Vec3(0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "mirror", Vec3(1.0)));
+    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "glass", Vec3(1.0)));
 
-#pragma omp parallel for schedule(dynamic, 1)
     for(int k = 0; k < samples; k++) {
         for(int i = 0; i < img.width; i++) {
+#pragma omp parallel for schedule(dynamic, 1)
             for(int j = 0; j < img.height; j++) {
                 float u = (2.0*(i + rnd()) - img.width)/img.width;
                 float v = (2.0*(j + rnd()) - img.height)/img.height;
