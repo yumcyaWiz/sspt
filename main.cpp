@@ -284,7 +284,7 @@ inline void orthonormalBasis(const Vec3& n, Vec3& x, Vec3& z) {
     else x = Vec3(1, 0, 0);
     x = x - dot(x, n)*n;
     x = normalize(x);
-    z = cross(n, x);
+    z = normalize(cross(n, x));
 }
 inline Vec3 randomHemisphere(float& pdf, const Vec3& n) {
     pdf = 1/(2*M_PI);
@@ -326,21 +326,24 @@ Vec3 getRadiance(const Ray& ray, int depth = 0) {
         if(res.hitSphere->type == "diffuse") {
             float pdf;
             Vec3 nextDir = randomCosineHemisphere(pdf, res.hitNormal);
-            Ray nextRay(res.hitPos + 0.001f*res.hitNormal, nextDir);
+            Ray nextRay(res.hitPos + 0.01f*res.hitNormal, nextDir);
             float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
             return 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1);
         }
         else if(res.hitSphere->type == "mirror") {
             Vec3 nextDir = reflect(ray.direction, res.hitNormal);
-            Ray nextRay(res.hitPos + 0.001f*res.hitNormal, nextDir);
+            Ray nextRay(res.hitPos + 0.01f*res.hitNormal, nextDir);
             return res.hitSphere->color * getRadiance(nextRay, depth + 1);
+        }
+        else if(res.hitSphere->type == "light") {
+            return res.hitSphere->color;
         }
         else {
             return Vec3(0, 0, 0);
         }
     }
     else {
-        return Vec3(1, 1, 1);
+        return Vec3(0, 0, 0);
     }
 }
 
@@ -363,12 +366,23 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 100;
+    const int samples = 1000;
     Image img(512, 512);
-    Camera cam(Vec3(0, 0, -3), Vec3(0, 0, 1));
+    Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
-    accel.add(std::make_shared<Sphere>(Vec3(0, 0, 0), 1.0, "diffuse", Vec3(0, 0.8, 0)));
-    accel.add(std::make_shared<Sphere>(Vec3(0, -10001, 0), 10000, "mirror", Vec3(0.8, 0.8, 0.8)));
+    //Walls
+    accel.add(std::make_shared<Sphere>(Vec3(0, -10000, 0), 10000, "diffuse", Vec3(0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, 10003, 0), 10000, "diffuse", Vec3(0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(10001.5, 0, 0), 10000, "diffuse", Vec3(0, 0.2, 0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(-10001.5, 0, 0), 10000, "diffuse", Vec3(0.8, 0.2, 0)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
+    
+    //Light
+    accel.add(std::make_shared<Sphere>(Vec3(0, 3, 2.5), 0.5, "light", Vec3(10)));
+
+    //Spheres
+    accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(0.8)));
 
 #pragma omp parallel for schedule(dynamic, 1)
     for(int k = 0; k < samples; k++) {
