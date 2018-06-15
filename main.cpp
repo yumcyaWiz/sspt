@@ -97,6 +97,10 @@ inline Vec3 pow(const Vec3& v, float n) {
     return Vec3(std::pow(v.x, n), std::pow(v.y, n), std::pow(v.z, n));
 }
 
+inline Vec3 reflect(const Vec3& v, const Vec3& n) {
+    return v - 2*dot(v, n)*n;
+}
+
 
 struct Ray {
     Vec3 origin;
@@ -319,11 +323,21 @@ Vec3 getRadiance(const Ray& ray, int depth = 0) {
 
     Hit res;
     if(accel.intersect(ray, res)) {
-        float pdf;
-        Vec3 nextDir = randomCosineHemisphere(pdf, res.hitNormal);
-        Ray nextRay(res.hitPos + 0.001f*res.hitNormal, nextDir);
-        float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
-        return 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1);
+        if(res.hitSphere->type == "diffuse") {
+            float pdf;
+            Vec3 nextDir = randomCosineHemisphere(pdf, res.hitNormal);
+            Ray nextRay(res.hitPos + 0.001f*res.hitNormal, nextDir);
+            float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
+            return 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1);
+        }
+        else if(res.hitSphere->type == "mirror") {
+            Vec3 nextDir = reflect(ray.direction, res.hitNormal);
+            Ray nextRay(res.hitPos + 0.001f*res.hitNormal, nextDir);
+            return res.hitSphere->color * getRadiance(nextRay, depth + 1);
+        }
+        else {
+            return Vec3(0, 0, 0);
+        }
     }
     else {
         return Vec3(1, 1, 1);
@@ -354,7 +368,7 @@ int main() {
     Camera cam(Vec3(0, 0, -3), Vec3(0, 0, 1));
 
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 0), 1.0, "diffuse", Vec3(0, 0.8, 0)));
-    accel.add(std::make_shared<Sphere>(Vec3(0, -10001, 0), 10000, "diffuse", Vec3(0.8, 0.8, 0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, -10001, 0), 10000, "mirror", Vec3(0.8, 0.8, 0.8)));
 
 #pragma omp parallel for schedule(dynamic, 1)
     for(int k = 0; k < samples; k++) {
