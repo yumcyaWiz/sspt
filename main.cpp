@@ -158,11 +158,38 @@ struct Image {
 };
 
 
+struct Sphere {
+    Vec3 center;
+    float radius;
+
+    Sphere(const Vec3& center, float radius) : center(center), radius(radius) {};
+
+    bool intersect(const Ray& ray) const {
+        float a = ray.direction.length2();
+        float b = 2*dot(ray.direction, ray.origin - center);
+        float c = (ray.origin - center).length2() - radius*radius;
+        float D = b*b - 4*a*c;
+        if(D < 0) return false;
+
+        float t0 = (-b - std::sqrt(D))/(2*a);
+        float t1 = (-b + std::sqrt(D))/(2*a);
+
+        float t = t0;
+        if(t < 0) {
+            t = t1;
+            if(t < 0) return false;
+        }
+
+        return true;
+    };
+};
+
+
+
 int main() {
     Image img(512, 512);
     for(int i = 0; i < 512; i++) {
         for(int j = 0; j < 512; j++) {
-            img.setPixel(i, j, Vec3(i/512.0, j/512.0, 1.0));
         }
     }
     img.ppm_output("output.ppm");
