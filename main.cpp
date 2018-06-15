@@ -100,6 +100,10 @@ struct Ray {
     Vec3 direction;
 
     Ray(const Vec3& origin, const Vec3& direction) : origin(origin), direction(direction) {};
+
+    Vec3 operator()(float t) const {
+        return origin + t*direction;
+    };
 };
 
 
@@ -162,13 +166,24 @@ struct Image {
 };
 
 
+struct Hit {
+    float t;
+    Vec3 hitPos;
+    Vec3 hitNormal;
+
+    Hit() {
+        t = 1000000;
+    };
+};
+
+
 struct Sphere {
     Vec3 center;
     float radius;
 
     Sphere(const Vec3& center, float radius) : center(center), radius(radius) {};
 
-    bool intersect(const Ray& ray) const {
+    bool intersect(const Ray& ray, Hit& res) const {
         float a = ray.direction.length2();
         float b = 2*dot(ray.direction, ray.origin - center);
         float c = (ray.origin - center).length2() - radius*radius;
@@ -183,6 +198,10 @@ struct Sphere {
             t = t1;
             if(t < 0) return false;
         }
+
+        res.t = t;
+        res.hitPos = ray(t);
+        res.hitNormal = normalize(res.hitPos - center);
 
         return true;
     };
@@ -216,8 +235,9 @@ int main() {
             float u = (2.0*i - img.width)/img.width;
             float v = (2.0*j - img.height)/img.height;
             Ray ray = cam.getRay(u, v);
-            if(sphere.intersect(ray)) {
-                img.setPixel(i, j, Vec3(1, 1, 1));
+            Hit res;
+            if(sphere.intersect(ray, res)) {
+                img.setPixel(i, j, (res.hitNormal + 1.0f)/2.0f);
             }
             else {
                 img.setPixel(i, j, Vec3(0, 0, 0));
