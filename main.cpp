@@ -3,6 +3,8 @@
 #include <string>
 #include <cmath>
 #include <cstdlib>
+#include <vector>
+#include <memory>
 #include <omp.h>
 
 
@@ -225,18 +227,47 @@ struct Camera {
 };
 
 
+struct Accel {
+    std::vector<std::shared_ptr<Sphere>> spheres;
+
+    Accel() {};
+
+    void add(const std::shared_ptr<Sphere>& p) {
+        spheres.push_back(p);
+    };
+
+    bool intersect(const Ray& ray, Hit& res) const {
+        bool isHit = false;
+        for(auto sphere : spheres) {
+            Hit res_each;
+            if(sphere->intersect(ray, res_each)) {
+                isHit = true;
+                if(res_each.t < res.t || !isHit) {
+                    res = res_each;
+                }
+            }
+        }
+        return isHit;
+    };
+};
+
+
 
 int main() {
     Image img(512, 512);
     Camera cam(Vec3(0, 0, -3), Vec3(0, 0, 1));
-    Sphere sphere(Vec3(0, 0, 0), 1.0);
+
+    Accel accel;
+    accel.add(std::make_shared<Sphere>(Vec3(0, 0, 0), 1.0));
+    accel.add(std::make_shared<Sphere>(Vec3(0, -10001, 0), 10000));
+
     for(int i = 0; i < img.width; i++) {
         for(int j = 0; j < img.height; j++) {
             float u = (2.0*i - img.width)/img.width;
             float v = (2.0*j - img.height)/img.height;
             Ray ray = cam.getRay(u, v);
             Hit res;
-            if(sphere.intersect(ray, res)) {
+            if(accel.intersect(ray, res)) {
                 img.setPixel(i, j, (res.hitNormal + 1.0f)/2.0f);
             }
             else {
