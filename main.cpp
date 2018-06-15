@@ -366,7 +366,7 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 1000;
+    const int samples = 100;
     Image img(512, 512);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
@@ -382,7 +382,7 @@ int main() {
 
     //Spheres
     accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(0.8)));
-    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "mirror", Vec3(0.8)));
 
 #pragma omp parallel for schedule(dynamic, 1)
     for(int k = 0; k < samples; k++) {
