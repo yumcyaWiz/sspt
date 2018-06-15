@@ -86,6 +86,10 @@ inline Vec3 cross(const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.y*v2.z - v1.z*v2.y, v1.z*v2.x - v1.x*v2.z, v1.x*v2.y - v1.y*v2.x);
 }
 
+inline Vec3 normalize(const Vec3& v) {
+    return v/v.length();
+}
+
 inline Vec3 pow(const Vec3& v, float n) {
     return Vec3(std::pow(v.x, n), std::pow(v.y, n), std::pow(v.z, n));
 }
@@ -205,8 +209,19 @@ struct Camera {
 
 int main() {
     Image img(512, 512);
-    for(int i = 0; i < 512; i++) {
-        for(int j = 0; j < 512; j++) {
+    Camera cam(Vec3(0, 0, -3), Vec3(0, 0, 1));
+    Sphere sphere(Vec3(0, 0, 0), 1.0);
+    for(int i = 0; i < img.width; i++) {
+        for(int j = 0; j < img.height; j++) {
+            float u = (2.0*i - img.width)/img.width;
+            float v = (2.0*j - img.height)/img.height;
+            Ray ray = cam.getRay(u, v);
+            if(sphere.intersect(ray)) {
+                img.setPixel(i, j, Vec3(1, 1, 1));
+            }
+            else {
+                img.setPixel(i, j, Vec3(0, 0, 0));
+            }
         }
     }
     img.ppm_output("output.ppm");
