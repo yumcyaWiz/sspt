@@ -281,9 +281,24 @@ inline Vec3 randomHemisphere(float& pdf, const Vec3& n) {
     float u = rnd();
     float v = rnd();
 
-    double x = std::cos(2*M_PI*u)*std::sqrt(1 - v*v);
-    double y = v;
-    double z = std::sin(2*M_PI*u)*std::sqrt(1 - v*v);
+    float x = std::cos(2*M_PI*u)*std::sqrt(1 - v*v);
+    float y = v;
+    float z = std::sin(2*M_PI*u)*std::sqrt(1 - v*v);
+    Vec3 xv, zv;
+    orthonormalBasis(n, xv, zv);
+    return x*xv + y*n + z*zv;
+}
+inline Vec3 randomCosineHemisphere(float &pdf, const Vec3& n) {
+    float u = rnd();
+    float v = rnd();
+
+    float theta = 0.5*std::acos(1 - 2*u);
+    float phi = 2*M_PI*v;
+    pdf = 1/M_PI * std::cos(theta);
+
+    float x = std::cos(phi)*std::sin(theta);
+    float y = std::cos(theta);
+    float z = std::sin(phi)*std::sin(theta);
     Vec3 xv, zv;
     orthonormalBasis(n, xv, zv);
     return x*xv + y*n + z*zv;
@@ -299,7 +314,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0) {
     Hit res;
     if(accel.intersect(ray, res)) {
         float pdf;
-        Vec3 nextDir = randomHemisphere(pdf, res.hitNormal);
+        Vec3 nextDir = randomCosineHemisphere(pdf, res.hitNormal);
         Ray nextRay(res.hitPos + 0.001f*res.hitNormal, nextDir);
         float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
         return 1/pdf * Vec3(0.8, 0.8, 0.8)/M_PI * cos_term * getRadiance(nextRay, depth + 1);
@@ -307,6 +322,23 @@ Vec3 getRadiance(const Ray& ray, int depth = 0) {
     else {
         return Vec3(1, 1, 1);
     }
+}
+
+
+inline std::string percentage(float x, float max) {
+    return std::to_string(x/max*100) + "%";
+}
+inline std::string progressbar(float x, float max) {
+    const int max_count = 40;
+    int cur_count = (int)(x/max * max_count);
+    std::string str;
+    str += "[";
+    for(int i = 0; i < cur_count; i++)
+        str += "#";
+    for(int i = 0; i < (max_count - cur_count - 1); i++)
+        str += " ";
+    str += "]";
+    return str;
 }
 
 
@@ -322,11 +354,14 @@ int main() {
     for(int k = 0; k < samples; k++) {
         for(int i = 0; i < img.width; i++) {
             for(int j = 0; j < img.height; j++) {
-                float u = (2.0*i - img.width)/img.width;
-                float v = (2.0*j - img.height)/img.height;
+                float u = (2.0*(i + rnd()) - img.width)/img.width;
+                float v = (2.0*(j + rnd()) - img.height)/img.height;
                 Ray ray = cam.getRay(u, v);
                 img.setPixel(i, j, img.getPixel(i, j) + getRadiance(ray));
             }
+        }
+        if(omp_get_thread_num() == 0) {
+            std::cout << progressbar(k, samples) << " " << percentage(k, samples) << "\r" << std::flush;
         }
     }
     img.divide(samples);
