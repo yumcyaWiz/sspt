@@ -389,12 +389,16 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
                 Vec3 lightPos = l->samplePos(lightPdf, lightNormal);
                 Vec3 lightDir = normalize(lightPos - res.hitPos);
 
+                float dot1 = dot(res.hitNormal, lightDir);
+                float dot2 = dot(-lightDir, lightNormal);
+                if(dot1 < 0 || dot2 < 0) continue;
+
                 Ray shadowRay(res.hitPos + eps*res.hitNormal, lightDir);
                 Hit hit_shadow;
                 accel.intersect(shadowRay, hit_shadow);
 
                 if(hit_shadow.hitSphere == &(*l)) {
-                    float geometry_term = std::max(dot(res.hitNormal, lightDir), 0.0f) * 1/((lightPos - res.hitPos).length2() + 1.0f)*std::max(dot(-lightDir, lightNormal), 0.0f);
+                    float geometry_term = dot1 * 1/((lightPos - res.hitPos).length2()) * dot2;
                     color += 1/roulette * 1/lightPdf * l->color * res.hitSphere->color/M_PI * geometry_term;
                 }
             }
@@ -534,9 +538,6 @@ int main() {
                 if(color.x < 0 || color.y < 0 || color.z < 0) {
                     std::cout << "minus detected" << std::endl;
                     color = Vec3(0, 0, 0);
-                }
-                if(color.length() > 100) {
-                    std::cout << "too bright pixel detected" << std::endl;
                 }
                 img.setPixel(i, j, img.getPixel(i, j) + color);
             }
