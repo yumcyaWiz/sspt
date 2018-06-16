@@ -29,6 +29,11 @@ struct Vec3 {
     Vec3 operator-() const {
         return Vec3(-x, -y, -z);
     };
+    void operator+=(const Vec3& v) {
+        x += v.x;
+        y += v.y;
+        z += v.z;
+    };
 
     float length() const {
         return std::sqrt(x*x + y*y + z*z);
@@ -126,6 +131,60 @@ struct Ray {
         return origin + t*direction;
     };
 };
+
+
+std::random_device rnd_dev;
+std::mt19937 mt(rnd_dev());
+std::uniform_real_distribution<> dist(0, 1);
+inline float rnd() {
+    return dist(mt);
+}
+
+
+inline void orthonormalBasis(const Vec3& n, Vec3& x, Vec3& z) {
+    if(n.x > 0.9) x = Vec3(0, 1, 0);
+    else x = Vec3(1, 0, 0);
+    x = x - dot(x, n)*n;
+    x = normalize(x);
+    z = normalize(cross(n, x));
+}
+inline Vec3 randomSphere(float &pdf) {
+    pdf = 1/(4*M_PI);
+    float u = rnd();
+    float v = rnd();
+
+    float y = 1 - 2*v;
+    float x = std::cos(2*M_PI*u)*std::sqrt(std::max(1 - y*y, 0.0f));
+    float z = std::sin(2*M_PI*u)*std::sqrt(std::max(1 - y*y, 0.0f));
+    return Vec3(x, y, z);
+}
+inline Vec3 randomHemisphere(float& pdf, const Vec3& n) {
+    pdf = 1/(2*M_PI);
+    float u = rnd();
+    float v = rnd();
+
+    float x = std::cos(2*M_PI*u)*std::sqrt(1 - v*v);
+    float y = v;
+    float z = std::sin(2*M_PI*u)*std::sqrt(1 - v*v);
+    Vec3 xv, zv;
+    orthonormalBasis(n, xv, zv);
+    return x*xv + y*n + z*zv;
+}
+inline Vec3 randomCosineHemisphere(float &pdf, const Vec3& n) {
+    float u = rnd();
+    float v = rnd();
+
+    float theta = 0.5*std::acos(1 - 2*u);
+    float phi = 2*M_PI*v;
+    pdf = 1/M_PI * std::cos(theta);
+
+    float x = std::cos(phi)*std::sin(theta);
+    float y = std::cos(theta);
+    float z = std::sin(phi)*std::sin(theta);
+    Vec3 xv, zv;
+    orthonormalBasis(n, xv, zv);
+    return x*xv + y*n + z*zv;
+}
 
 
 struct Image {
@@ -243,6 +302,13 @@ struct Sphere {
 
         return true;
     };
+
+    Vec3 samplePos(float& pdf, Vec3& normal) const {
+        Vec3 samplePos = center + radius*randomSphere(pdf);
+        normal = normalize(samplePos - center);
+        pdf = 1/(4*M_PI*radius*radius);
+        return samplePos;
+    };
 };
 
 
@@ -288,73 +354,69 @@ struct Accel {
 };
 
 
-std::random_device rnd_dev;
-std::mt19937 mt(rnd_dev());
-std::uniform_real_distribution<> dist(0, 1);
-inline float rnd() {
-    return dist(mt);
-}
+struct Light {
+    std::vector<std::shared_ptr<Sphere>> lights;
 
+    Light() {};
 
-inline void orthonormalBasis(const Vec3& n, Vec3& x, Vec3& z) {
-    if(n.x > 0.9) x = Vec3(0, 1, 0);
-    else x = Vec3(1, 0, 0);
-    x = x - dot(x, n)*n;
-    x = normalize(x);
-    z = normalize(cross(n, x));
-}
-inline Vec3 randomHemisphere(float& pdf, const Vec3& n) {
-    pdf = 1/(2*M_PI);
-    float u = rnd();
-    float v = rnd();
-
-    float x = std::cos(2*M_PI*u)*std::sqrt(1 - v*v);
-    float y = v;
-    float z = std::sin(2*M_PI*u)*std::sqrt(1 - v*v);
-    Vec3 xv, zv;
-    orthonormalBasis(n, xv, zv);
-    return x*xv + y*n + z*zv;
-}
-inline Vec3 randomCosineHemisphere(float &pdf, const Vec3& n) {
-    float u = rnd();
-    float v = rnd();
-
-    float theta = 0.5*std::acos(1 - 2*u);
-    float phi = 2*M_PI*v;
-    pdf = 1/M_PI * std::cos(theta);
-
-    float x = std::cos(phi)*std::sin(theta);
-    float y = std::cos(theta);
-    float z = std::sin(phi)*std::sin(theta);
-    Vec3 xv, zv;
-    orthonormalBasis(n, xv, zv);
-    return x*xv + y*n + z*zv;
-}
+    void add(const std::shared_ptr<Sphere>& p) {
+        lights.push_back(p);
+    };
+};
 
 
 Accel accel;
+Light light;
 
 
 const float eps = 0.005f;
 Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
-    float r = rnd();
-    if(r >= roulette) {
-        return Vec3(0, 0, 0);
-    }
-
     if(depth > 10) {
         roulette *= 0.9f;
+    }
+    if(rnd() >= roulette) {
+        return Vec3(0, 0, 0);
     }
 
     Hit res;
     if(accel.intersect(ray, res)) {
         if(res.hitSphere->type == "diffuse") {
-            float pdf;
-            Vec3 nextDir = randomCosineHemisphere(pdf, res.hitNormal);
+            Vec3 color;
+            //light sampling
+            for(auto l : light.lights) {
+                float lightPdf;
+                Vec3 lightNormal;
+                Vec3 lightPos = l->samplePos(lightPdf, lightNormal);
+                Vec3 lightDir = normalize(lightPos - res.hitPos);
+
+                Ray shadowRay(res.hitPos + eps*res.hitNormal, lightDir);
+                Hit hit_shadow;
+                accel.intersect(shadowRay, hit_shadow);
+
+                if(hit_shadow.hitSphere == &(*l)) {
+                    float geometry_term = std::max(dot(res.hitNormal, lightDir), 0.0f) * 1/((lightPos - res.hitPos).length2() + 0.1f)*std::max(dot(-lightDir, lightNormal), 0.0f);
+                    color += 1/roulette * 1/lightPdf * l->color * res.hitSphere->color/M_PI * geometry_term;
+                }
+            }
+
+            float dirPdf;
+            Vec3 nextDir = randomCosineHemisphere(dirPdf, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
             float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
-            return 1/roulette * 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
+            return color + 1/roulette * 1/dirPdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
         }
+        else if(res.hitSphere->type == "light") {
+            if(depth == 0) {
+                return res.hitSphere->color;
+            }
+            else {
+                return Vec3(0, 0, 0);
+            }
+        }
+        else {
+            return Vec3(0, 0, 0);
+        }
+        /*
         else if(res.hitSphere->type == "mirror") {
             Vec3 nextDir = reflect(ray.direction, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
@@ -411,6 +473,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
         else {
             return Vec3(0, 0, 0);
         }
+        */
     }
     else {
         return Vec3(0, 0, 0);
@@ -436,8 +499,8 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 1000;
-    Image img(512, 512);
+    const int samples = 10;
+    Image img(256, 256);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
     //Walls
@@ -448,11 +511,13 @@ int main() {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    accel.add(std::make_shared<Sphere>(Vec3(0, 3, 2.5), 0.5, "light", Vec3(10)));
+    auto p = std::make_shared<Sphere>(Vec3(0, 3, 2.5), 0.5, "light", Vec3(10));
+    accel.add(p);
+    light.add(p);
 
     //Spheres
-    accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "mirror", Vec3(1.0)));
-    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "glass", Vec3(1.0)));
+    accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(1.0)));
+    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(1.0)));
 
     for(int k = 0; k < samples; k++) {
         for(int i = 0; i < img.width; i++) {
@@ -469,6 +534,9 @@ int main() {
                 if(color.x < 0 || color.y < 0 || color.z < 0) {
                     std::cout << "minus detected" << std::endl;
                     color = Vec3(0, 0, 0);
+                }
+                if(color.length() > 100) {
+                    std::cout << "too bright pixel detected" << std::endl;
                 }
                 img.setPixel(i, j, img.getPixel(i, j) + color);
             }
