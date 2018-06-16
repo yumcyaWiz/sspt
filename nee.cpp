@@ -394,7 +394,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
                 accel.intersect(shadowRay, hit_shadow);
 
                 if(hit_shadow.hitSphere == &(*l)) {
-                    float geometry_term = std::max(dot(res.hitNormal, lightDir), 0.0f) * 1/((lightPos - res.hitPos).length2() + 0.1f)*std::max(dot(-lightDir, lightNormal), 0.0f);
+                    float geometry_term = std::max(dot(res.hitNormal, lightDir), 0.0f) * 1/((lightPos - res.hitPos).length2() + 1.0f)*std::max(dot(-lightDir, lightNormal), 0.0f);
                     color += 1/roulette * 1/lightPdf * l->color * res.hitSphere->color/M_PI * geometry_term;
                 }
             }
@@ -499,7 +499,7 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 10;
+    const int samples = 100;
     Image img(256, 256);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 

@@ -337,13 +337,11 @@ Accel accel;
 
 const float eps = 0.005f;
 Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
-    float r = rnd();
-    if(r >= roulette) {
-        return Vec3(0, 0, 0);
-    }
-
     if(depth > 10) {
         roulette *= 0.9f;
+    }
+    if(rnd() >= roulette) {
+        return Vec3(0, 0, 0);
     }
 
     Hit res;
@@ -436,8 +434,8 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 10;
-    Image img(512, 512);
+    const int samples = 100;
+    Image img(256, 256);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
     //Walls
@@ -448,7 +446,7 @@ int main() {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    accel.add(std::make_shared<Sphere>(Vec3(0, 3, 2.5), 0.5, "light", Vec3(1)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, 3, 2.5), 0.5, "light", Vec3(10)));
 
     //Spheres
     accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(1.0)));
