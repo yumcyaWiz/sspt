@@ -436,7 +436,7 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 100;
+    const int samples = 1000;
     Image img(512, 512);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
@@ -461,7 +461,16 @@ int main() {
                 float u = (2.0*(i + rnd()) - img.width)/img.width;
                 float v = (2.0*(j + rnd()) - img.height)/img.height;
                 Ray ray = cam.getRay(u, v);
-                img.setPixel(i, j, img.getPixel(i, j) + getRadiance(ray));
+                Vec3 color = getRadiance(ray);
+                if(std::isnan(color.x) || std::isnan(color.y) || std::isnan(color.z)) {
+                    std::cout << "nan detected" << std::endl;
+                    color = Vec3(0, 0, 0);
+                }
+                if(color.x < 0 || color.y < 0 || color.z < 0) {
+                    std::cout << "minus detected" << std::endl;
+                    color = Vec3(0, 0, 0);
+                }
+                img.setPixel(i, j, img.getPixel(i, j) + color);
             }
         }
         if(omp_get_thread_num() == 0) {
