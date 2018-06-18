@@ -309,6 +309,13 @@ struct Sphere {
         pdf = 1/(4*M_PI*radius*radius);
         return samplePos;
     };
+
+    Vec3 samplePos2(const Vec3& dir, float& pdf, Vec3& normal) const {
+        Vec3 samplePos = center + radius*randomHemisphere(pdf, -dir);
+        normal = normalize(samplePos - center);
+        pdf = 1/(2*M_PI*radius*radius);
+        return samplePos;
+    };
 };
 
 
@@ -386,21 +393,21 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
             for(auto l : light.lights) {
                 float lightPdf;
                 Vec3 lightNormal;
-                Vec3 lightPos = l->samplePos(lightPdf, lightNormal);
+                Vec3 lightCenterDir = normalize(l->center - res.hitPos);
+                //Vec3 lightPos = l->samplePos(lightPdf, lightNormal);
+                Vec3 lightPos = l->samplePos2(lightCenterDir, lightPdf, lightNormal);
                 Vec3 lightDir = normalize(lightPos - res.hitPos);
 
                 float dot1 = dot(res.hitNormal, lightDir);
                 float dot2 = dot(-lightDir, lightNormal);
-                if(dot1 < 0 || dot2 < 0) {
-                    continue;
-                }
+                if(dot1 < 0 || dot2 < 0) continue;
 
                 Ray shadowRay(res.hitPos + eps*res.hitNormal, lightDir);
                 Hit hit_shadow;
                 accel.intersect(shadowRay, hit_shadow);
 
                 if(hit_shadow.hitSphere == &(*l) && (lightPos - hit_shadow.hitPos).length() < 0.001f) {
-                    float dist2 = (lightPos - res.hitPos).length2() + 0.00001f;
+                    float dist2 = (lightPos - res.hitPos).length2();
                     float geometry_term = dot1 * 1/dist2 * dot2;
                     color += 1/roulette * 1/lightPdf * geometry_term * l->color * res.hitSphere->color/M_PI;
                 }
@@ -518,7 +525,7 @@ int main() {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(1.0)));
     
     //Light
-    auto p = std::make_shared<Sphere>(Vec3(0, 1.0, 2.5), 0.1, "light", Vec3(50));
+    auto p = std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", Vec3(10));
     accel.add(p);
     light.add(p);
 
