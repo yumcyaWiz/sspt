@@ -369,7 +369,7 @@ Accel accel;
 Light light;
 
 
-const float eps = 0.005f;
+const float eps = 0.001f;
 Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
     if(depth > 10) {
         roulette *= 0.9f;
@@ -391,14 +391,16 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
 
                 float dot1 = dot(res.hitNormal, lightDir);
                 float dot2 = dot(-lightDir, lightNormal);
-                if(dot1 < 0 || dot2 < 0) continue;
+                if(dot1 < 0 || dot2 < 0) {
+                    continue;
+                }
 
                 Ray shadowRay(res.hitPos + eps*res.hitNormal, lightDir);
                 Hit hit_shadow;
                 accel.intersect(shadowRay, hit_shadow);
 
                 if(hit_shadow.hitSphere == &(*l) && (lightPos - hit_shadow.hitPos).length2() < 0.001f) {
-                    float dist2 = (lightPos - res.hitPos).length2();
+                    float dist2 = (lightPos - res.hitPos).length2() + 0.00001f;
                     float geometry_term = dot1 * 1/dist2 * dot2;
                     color += 1/roulette * 1/lightPdf * geometry_term * l->color * res.hitSphere->color/M_PI;
                 }
@@ -504,8 +506,8 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 10;
-    Image img(256, 256);
+    const int samples = 100;
+    Image img(512, 512);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
     //Walls
@@ -516,7 +518,7 @@ int main() {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(1.0)));
     
     //Light
-    auto p = std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", Vec3(10));
+    auto p = std::make_shared<Sphere>(Vec3(0, 1.0, 2.5), 0.1, "light", Vec3(20));
     accel.add(p);
     light.add(p);
 
