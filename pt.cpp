@@ -7,6 +7,7 @@
 #include <memory>
 #include <random>
 #include <omp.h>
+#include <unistd.h>
 
 
 template <class T>
@@ -433,9 +434,27 @@ inline std::string progressbar(float x, float max) {
 }
 
 
-int main() {
-    const int samples = 100;
-    Image img(256, 256);
+int main(int argc, char** argv) {
+    int width;
+    int height;
+    int samples;
+
+    int opt;
+    while((opt = getopt(argc, argv, "w:h:s:")) != -1) {
+        switch(opt) {
+            case 'w':
+                width = std::stoi(optarg);
+                break;
+            case 'h':
+                height = std::stoi(optarg);
+                break;
+            case 's':
+                samples = std::stoi(optarg);
+                break;
+        }
+    }
+
+    Image img(width, height);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
     //Walls
