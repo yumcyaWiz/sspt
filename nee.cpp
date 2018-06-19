@@ -400,15 +400,20 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
 
                 float dot1 = dot(res.hitNormal, lightDir);
                 float dot2 = dot(-lightDir, lightNormal);
-                if(dot1 < 0 || dot2 < 0) continue;
+                if(dot1 < 0 || dot2 < 0) {
+                    continue;
+                }
 
                 Ray shadowRay(res.hitPos + eps*res.hitNormal, lightDir);
                 Hit hit_shadow;
-                accel.intersect(shadowRay, hit_shadow);
+                if(!accel.intersect(shadowRay, hit_shadow)) {
+                    std::cout << "Something Wrong!!" << std::endl;
+                    return Vec3(0, 0, 0);
+                }
 
-                if(hit_shadow.hitSphere == &(*l) && (lightPos - hit_shadow.hitPos).length() < 0.001f) {
+                if(hit_shadow.hitSphere == &(*l) && (hit_shadow.hitPos - lightPos).length() < 0.001f) {
                     float dist2 = (lightPos - res.hitPos).length2();
-                    float geometry_term = dot1 * 1/dist2 * dot2;
+                    float geometry_term = 1/dist2;
                     color += 1/roulette * 1/lightPdf * geometry_term * l->color * res.hitSphere->color/M_PI;
                 }
             }
@@ -513,16 +518,16 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 100;
+    const int samples = 30;
     Image img(256, 256);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
     //Walls
-    accel.add(std::make_shared<Sphere>(Vec3(0, -10000, 0), 10000, "diffuse", Vec3(1.0)));
-    accel.add(std::make_shared<Sphere>(Vec3(0, 10003, 0), 10000, "diffuse", Vec3(1.0)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, -10000, 0), 10000, "diffuse", Vec3(0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, 10003, 0), 10000, "diffuse", Vec3(0.8)));
     accel.add(std::make_shared<Sphere>(Vec3(10001.5, 0, 0), 10000, "diffuse", Vec3(0.25, 0.5, 1.0)));
     accel.add(std::make_shared<Sphere>(Vec3(-10001.5, 0, 0), 10000, "diffuse", Vec3(1.0, 0.3, 0.3)));
-    accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(1.0)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
     auto p = std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", Vec3(10));
@@ -530,8 +535,8 @@ int main() {
     light.add(p);
 
     //Spheres
-    auto sphere1 = std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(1.0));
-    auto sphere2 = std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(1.0));
+    auto sphere1 = std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(0.8));
+    auto sphere2 = std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(0.8));
     accel.add(sphere1);
     accel.add(sphere2);
 
