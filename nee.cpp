@@ -7,6 +7,7 @@
 #include <memory>
 #include <random>
 #include <omp.h>
+#include <unistd.h>
 
 
 template <class T>
@@ -263,7 +264,7 @@ struct Hit {
     bool inside;
 
     Hit() {
-        t = 1000000;
+        t = 10000000;
         hitSphere = nullptr;
         inside = false;
     };
@@ -289,9 +290,9 @@ struct Sphere {
         float t1 = (-b + std::sqrt(D))/(2*a);
 
         float t = t0;
-        if(t < 0.001f) {
+        if(t < 0.005f) {
             t = t1;
-            if(t < 0.001f) return false;
+            if(t < 0.005f) return false;
         }
 
         res.t = t;
@@ -411,7 +412,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
                     continue;
                 }
 
-                if(hit_shadow.hitSphere == &(*l) && (hit_shadow.hitPos - lightPos).length() < 0.001f) {
+                if(hit_shadow.hitSphere == &(*l) && (lightPos - hit_shadow.hitPos).length() < 0.001f) {
                     float dist2 = (lightPos - res.hitPos).length2();
                     float geometry_term = dot1 * 1/dist2 * dot2;
                     color += 1/roulette * 1/lightPdf * geometry_term * l->color * res.hitSphere->color/M_PI;
@@ -517,9 +518,27 @@ inline std::string progressbar(float x, float max) {
 }
 
 
-int main() {
-    const int samples = 100;
-    Image img(256, 256);
+int main(int argc, char** argv) {
+    int width;
+    int height;
+    int samples;
+
+    int opt;
+    while((opt = getopt(argc, argv, "w:h:s:")) != -1) {
+        switch(opt) {
+            case 'w':
+                width = std::stoi(optarg);
+                break;
+            case 'h':
+                height = std::stoi(optarg);
+                break;
+            case 's':
+                samples = std::stoi(optarg);
+                break;
+        }
+    }
+
+    Image img(width, height);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
     //Walls
@@ -530,7 +549,7 @@ int main() {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    auto p = std::make_shared<Sphere>(Vec3(0, 2.0, 2.5), 0.1, "light", Vec3(50));
+    auto p = std::make_shared<Sphere>(Vec3(0, 2.0, 2.5), 0.1, "light", Vec3(30));
     accel.add(p);
     light.add(p);
 
