@@ -289,9 +289,9 @@ struct Sphere {
         float t1 = (-b + std::sqrt(D))/(2*a);
 
         float t = t0;
-        if(t < 0) {
+        if(t < 0.001f) {
             t = t1;
-            if(t < 0) return false;
+            if(t < 0.001f) return false;
         }
 
         res.t = t;
@@ -376,7 +376,7 @@ Accel accel;
 Light light;
 
 
-const float eps = 0.001f;
+const float eps = 0.0f;
 Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
     if(depth > 10) {
         roulette *= 0.9f;
@@ -408,12 +408,12 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
                 Hit hit_shadow;
                 if(!accel.intersect(shadowRay, hit_shadow)) {
                     std::cout << "Something Wrong!!" << std::endl;
-                    return Vec3(0, 0, 0);
+                    continue;
                 }
 
                 if(hit_shadow.hitSphere == &(*l) && (hit_shadow.hitPos - lightPos).length() < 0.001f) {
                     float dist2 = (lightPos - res.hitPos).length2();
-                    float geometry_term = 1/dist2;
+                    float geometry_term = dot1 * 1/dist2 * dot2;
                     color += 1/roulette * 1/lightPdf * geometry_term * l->color * res.hitSphere->color/M_PI;
                 }
             }
@@ -518,7 +518,7 @@ inline std::string progressbar(float x, float max) {
 
 
 int main() {
-    const int samples = 30;
+    const int samples = 100;
     Image img(256, 256);
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
@@ -530,7 +530,7 @@ int main() {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    auto p = std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", Vec3(10));
+    auto p = std::make_shared<Sphere>(Vec3(0, 2.0, 2.5), 0.1, "light", Vec3(50));
     accel.add(p);
     light.add(p);
 
