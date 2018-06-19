@@ -437,7 +437,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_fl
             Vec3 nextDir = randomCosineHemisphere(dirPdf, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
             Real cos_term = std::max(dot(nextDir, res.hitNormal), (Real)0.0);
-            color += 1/roulette * 1/(dirPdf + 0.001) * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette, true);
+            color += 1/roulette * 1/(dirPdf + 0.001) * cos_term * 1/M_PI * getRadiance(nextRay, depth + 1, roulette, true);
         }
         else if(res.hitSphere->type == "mirror") {
             Vec3 nextDir = reflect(ray.direction, res.hitNormal);
