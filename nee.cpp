@@ -10,6 +10,9 @@
 #include <unistd.h>
 
 
+typedef double Real;
+
+
 template <class T>
 T clamp(T x, T xmin, T xmax) {
     if(x < xmin) return xmin;
@@ -19,13 +22,13 @@ T clamp(T x, T xmin, T xmax) {
 
 
 struct Vec3 {
-    float x;
-    float y;
-    float z;
+    Real x;
+    Real y;
+    Real z;
 
     Vec3() { x = y = z = 0; };
-    Vec3(float x) : x(x), y(x), z(x) {};
-    Vec3(float x, float y, float z) : x(x), y(y), z(z) {};
+    Vec3(Real x) : x(x), y(x), z(x) {};
+    Vec3(Real x, Real y, Real z) : x(x), y(y), z(z) {};
 
     Vec3 operator-() const {
         return Vec3(-x, -y, -z);
@@ -36,50 +39,50 @@ struct Vec3 {
         z += v.z;
     };
 
-    float length() const {
+    Real length() const {
         return std::sqrt(x*x + y*y + z*z);
     };
-    float length2() const {
+    Real length2() const {
         return x*x + y*y + z*z;
     };
 };
 inline Vec3 operator+(const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
 }
-inline Vec3 operator+(const Vec3& v, float k) {
+inline Vec3 operator+(const Vec3& v, Real k) {
     return Vec3(v.x + k, v.y + k, v.z + k);
 }
-inline Vec3 operator+(float k, const Vec3& v) {
+inline Vec3 operator+(Real k, const Vec3& v) {
     return v + k;
 }
 
 inline Vec3 operator-(const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
 }
-inline Vec3 operator-(const Vec3& v, float k) {
+inline Vec3 operator-(const Vec3& v, Real k) {
     return Vec3(v.x - k, v.y - k, v.z - k);
 }
-inline Vec3 operator-(float k, const Vec3& v) {
+inline Vec3 operator-(Real k, const Vec3& v) {
     return Vec3(k - v.x, k - v.y, k - v.z);
 }
 
 inline Vec3 operator*(const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z);
 }
-inline Vec3 operator*(const Vec3& v, float k) {
+inline Vec3 operator*(const Vec3& v, Real k) {
     return Vec3(v.x * k, v.y * k, v.z * k);
 }
-inline Vec3 operator*(float k, const Vec3& v) {
+inline Vec3 operator*(Real k, const Vec3& v) {
     return Vec3(k * v.x, k * v.y, k * v.z);
 }
 
 inline Vec3 operator/(const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z);
 }
-inline Vec3 operator/(const Vec3& v, float k) {
+inline Vec3 operator/(const Vec3& v, Real k) {
     return Vec3(v.x / k, v.y / k, v.z / k);
 }
-inline Vec3 operator/(float k, const Vec3& v) {
+inline Vec3 operator/(Real k, const Vec3& v) {
     return Vec3(k / v.x, k / v.y, k / v.z);
 }
 
@@ -88,7 +91,7 @@ inline std::ostream& operator<<(std::ostream& stream, const Vec3& v) {
     return stream;
 }
 
-inline float dot(const Vec3& v1, const Vec3& v2) {
+inline Real dot(const Vec3& v1, const Vec3& v2) {
     return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
 }
 inline Vec3 cross(const Vec3& v1, const Vec3& v2) {
@@ -99,24 +102,24 @@ inline Vec3 normalize(const Vec3& v) {
     return v/v.length();
 }
 
-inline Vec3 pow(const Vec3& v, float n) {
+inline Vec3 pow(const Vec3& v, Real n) {
     return Vec3(std::pow(v.x, n), std::pow(v.y, n), std::pow(v.z, n));
 }
 
 inline Vec3 reflect(const Vec3& v, const Vec3& n) {
-    return normalize(v - 2.0f*dot(v, n)*n);
+    return normalize(v - 2.0*dot(v, n)*n);
 }
-inline float fresnel(const Vec3& v, const Vec3& n, float n1, float n2) {
-    float f0 = std::pow((n1 - n2)/(n1 + n2), 2.0f);
-    return f0 + (1.0f - f0)*std::pow(1.0f - dot(v, n), 5.0f);
+inline Real fresnel(const Vec3& v, const Vec3& n, Real n1, Real n2) {
+    Real f0 = std::pow((n1 - n2)/(n1 + n2), 2.0);
+    return f0 + (1.0 - f0)*std::pow(1.0 - dot(v, n), 5.0);
 }
-inline bool refract(const Vec3& v, const Vec3& n, float n1, float n2, Vec3& r) {
-    float eta = n1/n2;
-    float eta2 = eta*eta;
-    float cosI = std::max(dot(-v, n), 0.0f);
-    float sin2I = std::max(1.0f - cosI*cosI, 0.0f);
+inline bool refract(const Vec3& v, const Vec3& n, Real n1, Real n2, Vec3& r) {
+    Real eta = n1/n2;
+    Real eta2 = eta*eta;
+    Real cosI = std::max(dot(-v, n), (Real)0.0);
+    Real sin2I = std::max((Real)1.0 - cosI*cosI, (Real)0.0);
     if(sin2I >= 1) return false;
-    float cosT = std::sqrt(1.0f - eta2*sin2I);
+    Real cosT = std::sqrt((Real)1.0 - eta2*sin2I);
     r = normalize(eta*v + (eta*cosI - cosT)*n);
     return true;
 }
@@ -128,7 +131,7 @@ struct Ray {
 
     Ray(const Vec3& origin, const Vec3& direction) : origin(origin), direction(direction) {};
 
-    Vec3 operator()(float t) const {
+    Vec3 operator()(Real t) const {
         return origin + t*direction;
     };
 };
@@ -137,7 +140,7 @@ struct Ray {
 std::random_device rnd_dev;
 std::mt19937 mt(rnd_dev());
 std::uniform_real_distribution<> dist(0, 1);
-inline float rnd() {
+inline Real rnd() {
     return dist(mt);
 }
 
@@ -149,39 +152,39 @@ inline void orthonormalBasis(const Vec3& n, Vec3& x, Vec3& z) {
     x = normalize(x);
     z = normalize(cross(n, x));
 }
-inline Vec3 randomSphere(float &pdf) {
+inline Vec3 randomSphere(Real &pdf) {
     pdf = 1/(4*M_PI);
-    float u = rnd();
-    float v = rnd();
+    Real u = rnd();
+    Real v = rnd();
 
-    float y = 1 - 2*v;
-    float x = std::cos(2*M_PI*u)*std::sqrt(std::max(1 - y*y, 0.0f));
-    float z = std::sin(2*M_PI*u)*std::sqrt(std::max(1 - y*y, 0.0f));
+    Real y = 1 - 2*v;
+    Real x = std::cos(2*M_PI*u)*std::sqrt(std::max(1 - y*y, (Real)0.0));
+    Real z = std::sin(2*M_PI*u)*std::sqrt(std::max(1 - y*y, (Real)0.0));
     return Vec3(x, y, z);
 }
-inline Vec3 randomHemisphere(float& pdf, const Vec3& n) {
+inline Vec3 randomHemisphere(Real& pdf, const Vec3& n) {
     pdf = 1/(2*M_PI);
-    float u = rnd();
-    float v = rnd();
+    Real u = rnd();
+    Real v = rnd();
 
-    float x = std::cos(2*M_PI*u)*std::sqrt(1 - v*v);
-    float y = v;
-    float z = std::sin(2*M_PI*u)*std::sqrt(1 - v*v);
+    Real x = std::cos(2*M_PI*u)*std::sqrt(1 - v*v);
+    Real y = v;
+    Real z = std::sin(2*M_PI*u)*std::sqrt(1 - v*v);
     Vec3 xv, zv;
     orthonormalBasis(n, xv, zv);
     return x*xv + y*n + z*zv;
 }
-inline Vec3 randomCosineHemisphere(float &pdf, const Vec3& n) {
-    float u = rnd();
-    float v = rnd();
+inline Vec3 randomCosineHemisphere(Real &pdf, const Vec3& n) {
+    Real u = rnd();
+    Real v = rnd();
 
-    float theta = 0.5*std::acos(1 - 2*u);
-    float phi = 2*M_PI*v;
+    Real theta = 0.5*std::acos(1 - 2*u);
+    Real phi = 2*M_PI*v;
     pdf = 1/M_PI * std::cos(theta);
 
-    float x = std::cos(phi)*std::sin(theta);
-    float y = std::cos(theta);
-    float z = std::sin(phi)*std::sin(theta);
+    Real x = std::cos(phi)*std::sin(theta);
+    Real y = std::cos(theta);
+    Real z = std::sin(phi)*std::sin(theta);
     Vec3 xv, zv;
     orthonormalBasis(n, xv, zv);
     return x*xv + y*n + z*zv;
@@ -216,7 +219,7 @@ struct Image {
         data[j + width*i] = col;
     };
 
-    void divide(float k) {
+    void divide(Real k) {
         for(int i = 0; i < width; i++) {
             for(int j = 0; j < height; j++) {
                 this->setPixel(i, j, this->getPixel(i, j)/k);
@@ -227,7 +230,7 @@ struct Image {
     void gamma_correction() {
         for(int i = 0; i < width; i++) {
             for(int j = 0; j < height; j++) {
-                Vec3 col = pow(this->getPixel(i, j), 1.0f/2.2f);
+                Vec3 col = pow(this->getPixel(i, j), 1.0/2.2);
                 this->setPixel(i, j, col);
             }
         }
@@ -243,9 +246,9 @@ struct Image {
         for(int j = 0; j < height; j++) {
             for(int i = 0; i < width; i++) {
                 Vec3 col = this->getPixel(i, j);
-                int r = 255*clamp(col.x, 0.0f, 1.0f);
-                int g = 255*clamp(col.y, 0.0f, 1.0f);
-                int b = 255*clamp(col.z, 0.0f, 1.0f);
+                int r = 255*clamp(col.x, (Real)0.0, (Real)1.0);
+                int g = 255*clamp(col.y, (Real)0.0, (Real)1.0);
+                int b = 255*clamp(col.z, (Real)0.0, (Real)1.0);
                 file << r << " " << g << " " << b << std::endl;
             }
         }
@@ -257,7 +260,7 @@ struct Image {
 
 struct Sphere;
 struct Hit {
-    float t;
+    Real t;
     Vec3 hitPos;
     Vec3 hitNormal;
     const Sphere* hitSphere;
@@ -273,26 +276,26 @@ struct Hit {
 
 struct Sphere {
     Vec3 center;
-    float radius;
+    Real radius;
     std::string type;
     Vec3 color;
 
-    Sphere(const Vec3& center, float radius, const std::string& type, const Vec3& color) : center(center), radius(radius), type(type), color(color) {};
+    Sphere(const Vec3& center, Real radius, const std::string& type, const Vec3& color) : center(center), radius(radius), type(type), color(color) {};
 
     bool intersect(const Ray& ray, Hit& res) const {
-        float a = ray.direction.length2();
-        float b = 2*dot(ray.direction, ray.origin - center);
-        float c = (ray.origin - center).length2() - radius*radius;
-        float D = b*b - 4*a*c;
+        Real a = ray.direction.length2();
+        Real b = 2*dot(ray.direction, ray.origin - center);
+        Real c = (ray.origin - center).length2() - radius*radius;
+        Real D = b*b - 4*a*c;
         if(D < 0) return false;
 
-        float t0 = (-b - std::sqrt(D))/(2*a);
-        float t1 = (-b + std::sqrt(D))/(2*a);
+        Real t0 = (-b - std::sqrt(D))/(2*a);
+        Real t1 = (-b + std::sqrt(D))/(2*a);
 
-        float t = t0;
-        if(t < 0.005f) {
+        Real t = t0;
+        if(t < 0.005) {
             t = t1;
-            if(t < 0.005f) return false;
+            if(t < 0.005) return false;
         }
 
         res.t = t;
@@ -304,14 +307,14 @@ struct Sphere {
         return true;
     };
 
-    Vec3 samplePos(float& pdf, Vec3& normal) const {
+    Vec3 samplePos(Real& pdf, Vec3& normal) const {
         Vec3 samplePos = center + radius*randomSphere(pdf);
         normal = normalize(samplePos - center);
         pdf = 1/(4*M_PI*radius*radius);
         return samplePos;
     };
 
-    Vec3 samplePos2(const Vec3& dir, float& pdf, Vec3& normal) const {
+    Vec3 samplePos2(const Vec3& dir, Real& pdf, Vec3& normal) const {
         Vec3 samplePos = center + radius*randomHemisphere(pdf, -dir);
         normal = normalize(samplePos - center);
         pdf = 1/(2*M_PI*radius*radius);
@@ -331,7 +334,7 @@ struct Camera {
         camUp = normalize(cross(camRight, camForward));
     };
 
-    Ray getRay(float u, float v) const {
+    Ray getRay(Real u, Real v) const {
         return Ray(camPos, normalize(camForward + u*camRight + v*camUp));
     };
 };
@@ -377,10 +380,10 @@ Accel accel;
 Light light;
 
 
-const float eps = 0.0f;
-Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
+const Real eps = 0.0;
+Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0) {
     if(depth > 10) {
-        roulette *= 0.9f;
+        roulette *= 0.9;
     }
     if(rnd() >= roulette) {
         return Vec3(0, 0, 0);
@@ -392,15 +395,15 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
             Vec3 color;
             //light sampling
             for(auto l : light.lights) {
-                float lightPdf;
+                Real lightPdf;
                 Vec3 lightNormal;
                 Vec3 lightCenterDir = normalize(l->center - res.hitPos);
                 //Vec3 lightPos = l->samplePos(lightPdf, lightNormal);
                 Vec3 lightPos = l->samplePos2(lightCenterDir, lightPdf, lightNormal);
                 Vec3 lightDir = normalize(lightPos - res.hitPos);
 
-                float dot1 = dot(res.hitNormal, lightDir);
-                float dot2 = dot(-lightDir, lightNormal);
+                Real dot1 = dot(res.hitNormal, lightDir);
+                Real dot2 = dot(-lightDir, lightNormal);
                 if(dot1 < 0 || dot2 < 0) {
                     continue;
                 }
@@ -412,18 +415,18 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
                     continue;
                 }
 
-                if(hit_shadow.hitSphere == &(*l) && (lightPos - hit_shadow.hitPos).length() < 0.001f) {
-                    float dist2 = (lightPos - res.hitPos).length2();
-                    float geometry_term = dot1 * 1/dist2 * dot2;
+                if(hit_shadow.hitSphere == &(*l) && (lightPos - hit_shadow.hitPos).length() < 0.001) {
+                    Real dist2 = (lightPos - res.hitPos).length2();
+                    Real geometry_term = dot1 * 1/dist2 * dot2;
                     color += 1/roulette * 1/lightPdf * geometry_term * l->color * res.hitSphere->color/M_PI;
                 }
             }
 
-            float dirPdf;
+            Real dirPdf;
             Vec3 nextDir = randomCosineHemisphere(dirPdf, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
-            float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
-            return color + 1/roulette * 1/(dirPdf + 0.001f) * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
+            Real cos_term = std::max(dot(nextDir, res.hitNormal), (Real)0.0);
+            return color + 1/roulette * 1/(dirPdf + 0.001) * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
         }
         else if(res.hitSphere->type == "light") {
             if(depth == 0) {
@@ -444,7 +447,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
         }
         else if(res.hitSphere->type == "glass") {
             if(!res.inside) {
-                float fr = fresnel(-ray.direction, res.hitNormal, 1.0f, 1.4f);
+                Real fr = fresnel(-ray.direction, res.hitNormal, 1.0f, 1.4f);
                 //reflect
                 if(rnd() < fr) {
                     Vec3 nextDir = reflect(ray.direction, res.hitNormal);
@@ -464,7 +467,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
                 }
             }
             else {
-                float fr = fresnel(-ray.direction, -res.hitNormal, 1.4f, 1.0f);
+                Real fr = fresnel(-ray.direction, -res.hitNormal, 1.4f, 1.0f);
                 //reflect
                 if(rnd() < fr) {
                     Vec3 nextDir = reflect(ray.direction, -res.hitNormal);
@@ -501,10 +504,10 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
 }
 
 
-inline std::string percentage(float x, float max) {
+inline std::string percentage(Real x, Real max) {
     return std::to_string(x/max*100) + "%";
 }
-inline std::string progressbar(float x, float max) {
+inline std::string progressbar(Real x, Real max) {
     const int max_count = 40;
     int cur_count = (int)(x/max * max_count);
     std::string str;
@@ -549,7 +552,7 @@ int main(int argc, char** argv) {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    auto p = std::make_shared<Sphere>(Vec3(0, 2.0, 2.5), 0.1, "light", Vec3(30));
+    auto p = std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", Vec3(10));
     accel.add(p);
     light.add(p);
 
@@ -563,12 +566,16 @@ int main(int argc, char** argv) {
         for(int i = 0; i < img.width; i++) {
 #pragma omp parallel for schedule(dynamic, 1)
             for(int j = 0; j < img.height; j++) {
-                float u = (2.0*(i + rnd()) - img.width)/img.width;
-                float v = (2.0*(j + rnd()) - img.height)/img.height;
+                Real u = (2.0*(i + rnd()) - img.width)/img.width;
+                Real v = (2.0*(j + rnd()) - img.height)/img.height;
                 Ray ray = cam.getRay(u, v);
                 Vec3 color = getRadiance(ray);
                 if(std::isnan(color.x) || std::isnan(color.y) || std::isnan(color.z)) {
                     std::cout << "nan detected" << std::endl;
+                    color = Vec3(0, 0, 0);
+                }
+                if(std::isinf(color.x) || std::isinf(color.y) || std::isinf(color.z)) {
+                    std::cout << "inf detected" << std::endl;
                     color = Vec3(0, 0, 0);
                 }
                 if(color.x < 0 || color.y < 0 || color.z < 0) {

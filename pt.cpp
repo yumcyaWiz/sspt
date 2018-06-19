@@ -465,7 +465,7 @@ int main(int argc, char** argv) {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    accel.add(std::make_shared<Sphere>(Vec3(0, 3, 2.5), 0.5, "light", Vec3(10)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, 2.0, 2.5), 0.1, "light", Vec3(70)));
 
     //Spheres
     accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(1.0)));
