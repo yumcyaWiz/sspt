@@ -407,7 +407,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
                 Ray shadowRay(res.hitPos + eps*res.hitNormal, lightDir);
                 Hit hit_shadow;
                 if(!accel.intersect(shadowRay, hit_shadow)) {
-                    std::cout << "Something Wrong!!" << std::endl;
+                    std::cout << "shadowRay hit nothing, origin:" << shadowRay.origin << ", direction:" << shadowRay.direction << std::endl;
                     continue;
                 }
 
@@ -422,7 +422,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, float roulette = 1.0f) {
             Vec3 nextDir = randomCosineHemisphere(dirPdf, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
             float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
-            return color + 1/roulette * 1/dirPdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
+            return color + 1/roulette * 1/(dirPdf + 0.001f) * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
         }
         else if(res.hitSphere->type == "light") {
             if(depth == 0) {
