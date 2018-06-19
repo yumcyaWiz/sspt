@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 
-typedef double Real;
+typedef float Real;
 
 
 template <class T>
@@ -380,8 +380,8 @@ Accel accel;
 Light light;
 
 
-const Real eps = 0.0;
-Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0) {
+const Real eps = 0;
+Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_flag = false) {
     if(depth > 10) {
         roulette *= 0.9;
     }
@@ -389,10 +389,14 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0) {
         return Vec3(0, 0, 0);
     }
 
+    Vec3 color;
     Hit res;
     if(accel.intersect(ray, res)) {
+        if(!nee_flag) {
+            if(res.hitSphere->type == "light") color += res.hitSphere->color;
+        }
+
         if(res.hitSphere->type == "diffuse") {
-            Vec3 color;
             //light sampling
             for(auto l : light.lights) {
                 Real lightPdf;
@@ -411,7 +415,7 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0) {
                 Ray shadowRay(res.hitPos + eps*res.hitNormal, lightDir);
                 Hit hit_shadow;
                 if(!accel.intersect(shadowRay, hit_shadow)) {
-                    std::cout << "shadowRay hit nothing, origin:" << shadowRay.origin << ", direction:" << shadowRay.direction << std::endl;
+                    std::cerr << "shadowRay doesn't hit anything, origin:" << shadowRay.origin << ", direction:" << shadowRay.direction << std::endl;
                     continue;
                 }
 
@@ -426,25 +430,23 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0) {
             Vec3 nextDir = randomCosineHemisphere(dirPdf, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
             Real cos_term = std::max(dot(nextDir, res.hitNormal), (Real)0.0);
-            return color + 1/roulette * 1/(dirPdf + 0.001) * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
+            color += 1/roulette * 1/(dirPdf + 0.001) * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette, true);
         }
         else if(res.hitSphere->type == "light") {
-            if(depth == 0) {
-                return res.hitSphere->color;
-            }
-            else {
-                return Vec3(0, 0, 0);
-            }
+            Real dirPdf;
+            Vec3 nextDir = randomCosineHemisphere(dirPdf, res.hitNormal);
+            Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
+            Real cos_term = std::max(dot(nextDir, res.hitNormal), (Real)0.0);
+            color += 1/roulette * 1/(dirPdf + 0.001) * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette, true);
         }
-        else {
-            return Vec3(0, 0, 0);
-        }
-        /*
         else if(res.hitSphere->type == "mirror") {
             Vec3 nextDir = reflect(ray.direction, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
-            return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+            color += 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette, false);
         }
+        else {
+        }
+        /*
         else if(res.hitSphere->type == "glass") {
             if(!res.inside) {
                 Real fr = fresnel(-ray.direction, res.hitNormal, 1.0f, 1.4f);
@@ -499,8 +501,9 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0) {
         */
     }
     else {
-        return Vec3(0, 0, 0);
+        color = Vec3(0, 0, 0);
     }
+    return color;
 }
 
 
@@ -571,15 +574,15 @@ int main(int argc, char** argv) {
                 Ray ray = cam.getRay(u, v);
                 Vec3 color = getRadiance(ray);
                 if(std::isnan(color.x) || std::isnan(color.y) || std::isnan(color.z)) {
-                    std::cout << "nan detected" << std::endl;
+                    std::cerr << "nan detected" << std::endl;
                     color = Vec3(0, 0, 0);
                 }
                 if(std::isinf(color.x) || std::isinf(color.y) || std::isinf(color.z)) {
-                    std::cout << "inf detected" << std::endl;
+                    std::cerr << "inf detected" << std::endl;
                     color = Vec3(0, 0, 0);
                 }
                 if(color.x < 0 || color.y < 0 || color.z < 0) {
-                    std::cout << "minus detected" << std::endl;
+                    std::cerr << "minus detected" << std::endl;
                     color = Vec3(0, 0, 0);
                 }
                 img.setPixel(i, j, img.getPixel(i, j) + color);
