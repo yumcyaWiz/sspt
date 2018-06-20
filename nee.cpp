@@ -267,7 +267,7 @@ struct Hit {
     bool inside;
 
     Hit() {
-        t = 10000000;
+        t = 10000;
         hitSphere = nullptr;
         inside = false;
     };
@@ -284,9 +284,9 @@ struct Sphere {
 
     bool intersect(const Ray& ray, Hit& res) const {
         Real a = ray.direction.length2();
-        Real b = 2*dot(ray.direction, ray.origin - center);
+        Real b = 2.0*dot(ray.direction, ray.origin - center);
         Real c = (ray.origin - center).length2() - radius*radius;
-        Real D = b*b - 4*a*c;
+        Real D = b*b - 4.0*a*c;
         if(D < 0) return false;
 
         Real t0 = (-b - std::sqrt(D))/(2*a);
@@ -392,6 +392,10 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_fl
     Vec3 color;
     Hit res;
     if(accel.intersect(ray, res)) {
+        if(res.hitPos.y > 4) {
+            std::cout << res.hitPos << std::endl;
+        }
+
         if(!nee_flag) {
             if(res.hitSphere->type == "light") {
                 color += res.hitSphere->color;
@@ -422,6 +426,10 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_fl
                 }
 
                 if(hit_shadow.hitSphere == &(*l) && (lightPos - hit_shadow.hitPos).length() < 0.001) {
+                    if(lightPos.y > 3.3) {
+                        std::cout << "hitPos: " << res.hitPos << std::endl;
+                        std::cout << "origin: " << shadowRay.origin << std::endl;
+                    }
                     Real dist2 = (lightPos - res.hitPos).length2();
                     Real geometry_term = dot1 * 1/dist2 * dot2;
                     color += 1/roulette * 1/lightPdf * geometry_term * l->color * res.hitSphere->color/M_PI;
@@ -548,6 +556,7 @@ int main(int argc, char** argv) {
     accel.add(std::make_shared<Sphere>(Vec3(10001.5, 0, 0), 10000, "diffuse", Vec3(0.25, 0.5, 1.0)));
     accel.add(std::make_shared<Sphere>(Vec3(-10001.5, 0, 0), 10000, "diffuse", Vec3(1.0, 0.3, 0.3)));
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, 0, -10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
     auto p = std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", Vec3(10));
