@@ -393,7 +393,9 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_fl
     Hit res;
     if(accel.intersect(ray, res)) {
         if(!nee_flag) {
-            if(res.hitSphere->type == "light") color += res.hitSphere->color;
+            if(res.hitSphere->type == "light") {
+                color += res.hitSphere->color;
+            }
         }
 
         if(res.hitSphere->type == "diffuse") {
@@ -437,30 +439,27 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_fl
             Vec3 nextDir = randomCosineHemisphere(dirPdf, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
             Real cos_term = std::max(dot(nextDir, res.hitNormal), (Real)0.0);
-            color += 1/roulette * 1/(dirPdf + 0.001) * cos_term * 1/M_PI * getRadiance(nextRay, depth + 1, roulette, true);
+            color += 1/roulette * 1/(dirPdf + 0.001) * 1/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette, true);
         }
         else if(res.hitSphere->type == "mirror") {
             Vec3 nextDir = reflect(ray.direction, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
             color += 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette, false);
         }
-        else {
-        }
-        /*
         else if(res.hitSphere->type == "glass") {
             if(!res.inside) {
-                Real fr = fresnel(-ray.direction, res.hitNormal, 1.0f, 1.4f);
+                Real fr = fresnel(-ray.direction, res.hitNormal, 1.0, 1.4);
                 //reflect
                 if(rnd() < fr) {
                     Vec3 nextDir = reflect(ray.direction, res.hitNormal);
                     Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
-                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette, false);
                 }
                 else {
                     Vec3 nextDir;
-                    if(refract(ray.direction, res.hitNormal, 1.0f, 1.4f, nextDir)) {
+                    if(refract(ray.direction, res.hitNormal, 1.0, 1.4, nextDir)) {
                         Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
-                        return 1/roulette * std::pow(1.4f/1.0f, 2.0f) * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                        return 1/roulette * std::pow(1.4/1.0, 2.0) * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette, false);
                     }
                     else {
                         std::cerr << "Something Wrong!!" << std::endl;
@@ -469,36 +468,32 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_fl
                 }
             }
             else {
-                Real fr = fresnel(-ray.direction, -res.hitNormal, 1.4f, 1.0f);
+                Real fr = fresnel(-ray.direction, -res.hitNormal, 1.4, 1.0);
                 //reflect
                 if(rnd() < fr) {
                     Vec3 nextDir = reflect(ray.direction, -res.hitNormal);
                     Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
-                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette, false);
                 }
                 //refract
                 else {
                     Vec3 nextDir;
-                    if(refract(ray.direction, -res.hitNormal, 1.4f, 1.0f, nextDir)) {
+                    if(refract(ray.direction, -res.hitNormal, 1.4, 1.0, nextDir)) {
                         Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
-                        return 1/roulette * std::pow(1.0f/1.4f, 2.0f) * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                        return 1/roulette * std::pow(1.0/1.4, 2.0) * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette, false);
                     }
                     //total reflection
                     else {
                         nextDir = reflect(ray.direction, -res.hitNormal);
                         Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
-                        return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                        return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette, false);
                     }
                 }
             }
         }
-        else if(res.hitSphere->type == "light") {
-            return res.hitSphere->color;
-        }
         else {
-            return Vec3(0, 0, 0);
+            color = Vec3(0, 0, 0);
         }
-        */
     }
     else {
         color = Vec3(0, 0, 0);
@@ -561,7 +556,7 @@ int main(int argc, char** argv) {
 
     //Spheres
     auto sphere1 = std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(0.8));
-    auto sphere2 = std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(0.8));
+    auto sphere2 = std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(1.0));
     accel.add(sphere1);
     accel.add(sphere2);
 
