@@ -392,10 +392,6 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_fl
     Vec3 color;
     Hit res;
     if(accel.intersect(ray, res)) {
-        if(res.hitPos.y > 4) {
-            std::cout << res.hitPos << std::endl;
-        }
-
         if(!nee_flag) {
             if(res.hitSphere->type == "light") {
                 color += res.hitSphere->color;
@@ -426,10 +422,6 @@ Vec3 getRadiance(const Ray& ray, int depth = 0, Real roulette = 1.0, bool nee_fl
                 }
 
                 if(hit_shadow.hitSphere == &(*l) && (lightPos - hit_shadow.hitPos).length() < 0.001) {
-                    if(lightPos.y > 3.3) {
-                        std::cout << "hitPos: " << res.hitPos << std::endl;
-                        std::cout << "origin: " << shadowRay.origin << std::endl;
-                    }
                     Real dist2 = (lightPos - res.hitPos).length2();
                     Real geometry_term = dot1 * 1/dist2 * dot2;
                     color += 1/roulette * 1/lightPdf * geometry_term * l->color * res.hitSphere->color/M_PI;
@@ -559,7 +551,7 @@ int main(int argc, char** argv) {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, -10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    auto p = std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", Vec3(10));
+    auto p = std::make_shared<Sphere>(Vec3(0, 2.0, 2.5), 0.5, "light", Vec3(5));
     accel.add(p);
     light.add(p);
 
