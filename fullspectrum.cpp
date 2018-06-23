@@ -120,12 +120,38 @@ inline bool refract(const Vec3& v, const Vec3& n, float n1, float n2, Vec3& r) {
 struct Spectrum {
     std::vector<float> data;
 
-    Spectrum() {};
+    Spectrum(int n) {
+        data.resize(n);
+    };
     Spectrum(const std::vector<float>& spectrum) : spectrum(spectrum) {};
 
     Vec3 convertToRGB() const {
     };
 };
+inline Spectrum operator+(const Spectrum& s1, const Spectrum& s2) {
+    if(s1.size() != s2.size()) {
+        std::cout << "Spectrum Sample Size doesn't match" << std::endl;
+        std::exit(1);
+    }
+
+    std::vector<float> ret(s1.size());
+    for(int i = 0; i < s1.size(); i++) {
+        ret[i] = s1[i] + s2[i];
+    }
+    return ret;
+}
+inline Spectrum operator-(const Spectrum& s1, const Spectrum& s2) {
+    if(s1.size() != s2.size()) {
+        std::cout << "Spectrum Sample Size doesn't match" << std::endl;
+        std::exit(1);
+    }
+
+    std::vector<float> ret(s1.size());
+    for(int i = 0; i < s1.size(); i++) {
+        ret[i] = s1[i] - s2[i];
+    }
+    return ret;
+}
 
 
 struct Ray {
