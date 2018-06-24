@@ -188,9 +188,6 @@ struct Image {
                 float rf = clamp(col.x, 0.0f, 1.0f);
                 float gf = clamp(col.y, 0.0f, 1.0f);
                 float bf = clamp(col.z, 0.0f, 1.0f);
-                if(std::isnan(rf)) rf = 0.0f;
-                if(std::isnan(gf)) gf = 0.0f;
-                if(std::isnan(bf)) bf = 0.0f;
 
                 int r = 255*rf;
                 int g = 255*gf;
@@ -348,7 +345,8 @@ inline float SCHOTT_BK7(float l) {
     return std::sqrt(1 + 1.03961212*l*l/(l*l - 0.00600069867) + 0.231792344*l*l/(l*l - 0.0200179144) + 1.01046945*l*l/(l*l - 103.560653));
 }
 inline float SCHOTT_F(float l) {
-    return std::sqrt(1 + 1.34533359*l*l/(l*l - 0.00997743871) + 0.209073176*l*l/(l*l - 0.0470450767) + 0.937357162*l*l/(l*l - 111.886764));
+    float v = std::sqrt(1 + 1.34533359*l*l/(l*l - 0.00997743871) + 0.209073176*l*l/(l*l - 0.0470450767) + 0.937357162*l*l/(l*l - 111.886764));
+    return v*v*v/(1.5*1.5*1.5);
 }
 
 
@@ -539,7 +537,7 @@ Spectrum getRadiance(const Ray& ray, double wave_length, int depth = 0, float ro
         }
     }
     else {
-        return 0.03;
+        return 0.2*std::pow(dot(ray.direction, normalize(Vec3(1, 1, 1))), 32.0);
     }
 }
 
@@ -582,7 +580,7 @@ int main(int argc, char** argv) {
     }
 
     Image img(width, height);
-    Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
+    Camera cam(Vec3(0, 30, -90), Vec3(0, 0, 1));
 
     //Walls
     accel.add(std::make_shared<Sphere>(Vec3(0, -10000, 0), 10000, "diffuse", 0.8));
@@ -595,8 +593,8 @@ int main(int argc, char** argv) {
     //accel.add(std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", 0.1));
 
     //Spheres
-    accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", 1.0));
-    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "glass", 1.0));
+    accel.add(std::make_shared<Sphere>(Vec3(-0.7 - 30, 30, 3.0), 30, "diffuse", 1.0));
+    accel.add(std::make_shared<Sphere>(Vec3(0.7 + 30, 30, 2.5), 30, "glass", 1.0));
 
     //波長の分割数
     const int wl_count = 95;
@@ -631,15 +629,19 @@ int main(int argc, char** argv) {
                 Ray ray = cam.getRay(u, v);
 
                 //波長の重点的サンプリング
-                //int wl_index = std::lower_bound(wl_cdf, wl_cdf + wl_count, rnd()) - wl_cdf;
-                //if(wl_index >= wl_count) wl_index = wl_count - 1;
-                //float wave_length_pdf = wl_pdf[wl_index];
-                int wl_index = (int)(wl_count*rnd());
+                int wl_index = std::lower_bound(wl_cdf, wl_cdf + wl_count, rnd()) - wl_cdf;
+                if(wl_index >= wl_count) wl_index = wl_count - 1;
+                float wave_length_pdf = wl_pdf[wl_index];
+                //int wl_index = (int)(wl_count*rnd());
                 float wave_length = (wl_index * 5 + 360)/1000.0;
 
-                Spectrum spec = getRadiance(ray, wave_length)*wl_count;
+                Spectrum spec = getRadiance(ray, wave_length)/wave_length_pdf;
                 Vec3 xyz = Vec3(wavelength_to_xyz[3*wl_index], wavelength_to_xyz[3*wl_index + 1], wavelength_to_xyz[3*wl_index + 2])*spec;
                 Vec3 color = xyz_to_rgb(xyz);
+
+                if(color.x < 0 || std::isnan(color.x)) color.x = 0;
+                if(color.y < 0 || std::isnan(color.y)) color.y = 0;
+                if(color.z < 0 || std::isnan(color.z)) color.z = 0;
 
                 img.setPixel(i, j, img.getPixel(i, j) + color);
             }
