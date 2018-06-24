@@ -551,7 +551,7 @@ int main(int argc, char** argv) {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, -10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    auto p = std::make_shared<Sphere>(Vec3(0, 2.5, 2.5), 0.2, "light", Vec3(30));
+    auto p = std::make_shared<Sphere>(Vec3(0, 2.5, 2.5), 0.2, "light", Vec3(10));
     accel.add(p);
     light.add(p);
 

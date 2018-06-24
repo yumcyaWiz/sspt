@@ -4,7 +4,7 @@ pt:
 nee:
 	g++ -std=c++17 -fopenmp -O3 nee.cpp
 
-fullsp:
+fullspec:
 	g++ -std=c++17 -fopenmp -O3 fullspectrum.cpp
 
 nee_debug:

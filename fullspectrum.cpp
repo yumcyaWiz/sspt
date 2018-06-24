@@ -184,9 +184,17 @@ struct Image {
         for(int j = 0; j < height; j++) {
             for(int i = 0; i < width; i++) {
                 Vec3 col = this->getPixel(i, j);
-                int r = 255*clamp(col.x, 0.0f, 1.0f);
-                int g = 255*clamp(col.y, 0.0f, 1.0f);
-                int b = 255*clamp(col.z, 0.0f, 1.0f);
+
+                float rf = clamp(col.x, 0.0f, 1.0f);
+                float gf = clamp(col.y, 0.0f, 1.0f);
+                float bf = clamp(col.z, 0.0f, 1.0f);
+                if(std::isnan(rf)) rf = 0.0f;
+                if(std::isnan(gf)) gf = 0.0f;
+                if(std::isnan(bf)) bf = 0.0f;
+
+                int r = 255*rf;
+                int g = 255*gf;
+                int b = 255*bf;
                 file << r << " " << g << " " << b << std::endl;
             }
         }
@@ -212,13 +220,16 @@ struct Hit {
 };
 
 
+typedef float Spectrum;
+
+
 struct Sphere {
     Vec3 center;
     float radius;
     std::string type;
-    Vec3 color;
+    Spectrum color;
 
-    Sphere(const Vec3& center, float radius, const std::string& type, const Vec3& color) : center(center), radius(radius), type(type), color(color) {};
+    Sphere(const Vec3& center, float radius, const std::string& type, const Spectrum& color) : center(center), radius(radius), type(type), color(color) {};
 
     bool intersect(const Ray& ray, Hit& res) const {
         float a = ray.direction.length2();
@@ -333,104 +344,110 @@ inline Vec3 randomCosineHemisphere(float &pdf, const Vec3& n) {
 }
 
 
-inline double SCHOTT_BK7(double l) {
+inline float SCHOTT_BK7(float l) {
     return std::sqrt(1 + 1.03961212*l*l/(l*l - 0.00600069867) + 0.231792344*l*l/(l*l - 0.0200179144) + 1.01046945*l*l/(l*l - 103.560653));
 }
-inline double SCHOTT_F(double l) {
+inline float SCHOTT_F(float l) {
     return std::sqrt(1 + 1.34533359*l*l/(l*l - 0.00997743871) + 0.209073176*l*l/(l*l - 0.0470450767) + 0.937357162*l*l/(l*l - 111.886764));
 }
 
 
 static const float wavelength_to_xyz[] = {
-    2.952420E-03,4.076779E-04,1.318752E-02,
-    7.641137E-03,1.078166E-03,3.424588E-02,
-    1.879338E-02,2.589775E-03,8.508254E-02,
-    4.204986E-02,5.474207E-03,1.927065E-01,
-    8.277331E-02,1.041303E-02,3.832822E-01,
-    1.395127E-01,1.712968E-02,6.568187E-01,
-    2.077647E-01,2.576133E-02,9.933444E-01,
-    2.688989E-01,3.529554E-02,1.308674E+00,
-    3.281798E-01,4.698226E-02,1.624940E+00,
-    3.693084E-01,6.047429E-02,1.867751E+00,
-    4.026189E-01,7.468288E-02,2.075946E+00,
-    4.042529E-01,8.820537E-02,2.132574E+00,
-    3.932139E-01,1.039030E-01,2.128264E+00,
-    3.482214E-01,1.195389E-01,1.946651E+00,
-    3.013112E-01,1.414586E-01,1.768440E+00,
-    2.534221E-01,1.701373E-01,1.582342E+00,
-    1.914176E-01,1.999859E-01,1.310576E+00,
-    1.283167E-01,2.312426E-01,1.010952E+00,
-    7.593120E-02,2.682271E-01,7.516389E-01,
-    3.836770E-02,3.109438E-01,5.549619E-01,
-    1.400745E-02,3.554018E-01,3.978114E-01,
-    3.446810E-03,4.148227E-01,2.905816E-01,
-    5.652072E-03,4.780482E-01,2.078158E-01,
-    1.561956E-02,5.491344E-01,1.394643E-01,
-    3.778185E-02,6.248296E-01,8.852389E-02,
-    7.538941E-02,7.012292E-01,5.824484E-02,
-    1.201511E-01,7.788199E-01,3.784916E-02,
-    1.756832E-01,8.376358E-01,2.431375E-02,
-    2.380254E-01,8.829552E-01,1.539505E-02,
-    3.046991E-01,9.233858E-01,9.753000E-03,
-    3.841856E-01,9.665325E-01,6.083223E-03,
-    4.633109E-01,9.886887E-01,3.769336E-03,
-    5.374170E-01,9.907500E-01,2.323578E-03,
-    6.230892E-01,9.997775E-01,1.426627E-03,
-    7.123849E-01,9.944304E-01,8.779264E-04,
-    8.016277E-01,9.848127E-01,5.408385E-04,
-    8.933408E-01,9.640545E-01,3.342429E-04,
-    9.721304E-01,9.286495E-01,2.076129E-04,
-    1.034327E+00,8.775360E-01,1.298230E-04,
-    1.106886E+00,8.370838E-01,8.183954E-05,
-    1.147304E+00,7.869950E-01,5.207245E-05,
-    1.160477E+00,7.272309E-01,3.347499E-05,
-    1.148163E+00,6.629035E-01,2.175998E-05,
-    1.113846E+00,5.970375E-01,1.431231E-05,
-    1.048485E+00,5.282296E-01,9.530130E-06,
-    9.617111E-01,4.601308E-01,6.426776E-06,
-    8.629581E-01,3.950755E-01,0.000000E+00,
-    7.603498E-01,3.351794E-01,0.000000E+00,
-    6.413984E-01,2.751807E-01,0.000000E+00,
-    5.290979E-01,2.219564E-01,0.000000E+00,
-    4.323126E-01,1.776882E-01,0.000000E+00,
-    3.496358E-01,1.410203E-01,0.000000E+00,
-    2.714900E-01,1.083996E-01,0.000000E+00,
-    2.056507E-01,8.137687E-02,0.000000E+00,
-    1.538163E-01,6.033976E-02,0.000000E+00,
-    1.136072E-01,4.425383E-02,0.000000E+00,
-    8.281010E-02,3.211852E-02,0.000000E+00,
-    5.954815E-02,2.302574E-02,0.000000E+00,
-    4.221473E-02,1.628841E-02,0.000000E+00,
-    2.948752E-02,1.136106E-02,0.000000E+00,
-    2.025590E-02,7.797457E-03,0.000000E+00,
-    1.410230E-02,5.425391E-03,0.000000E+00,
-    9.816228E-03,3.776140E-03,0.000000E+00,
-    6.809147E-03,2.619372E-03,0.000000E+00,
-    4.666298E-03,1.795595E-03,0.000000E+00,
-    3.194041E-03,1.229980E-03,0.000000E+00,
-    2.205568E-03,8.499903E-04,0.000000E+00,
-    1.524672E-03,5.881375E-04,0.000000E+00,
-    1.061495E-03,4.098928E-04,0.000000E+00,
-    7.400120E-04,2.860718E-04,0.000000E+00,
-    5.153113E-04,1.994949E-04,0.000000E+00,
-    3.631969E-04,1.408466E-04,0.000000E+00,
-    2.556624E-04,9.931439E-05,0.000000E+00,
-    1.809649E-04,7.041878E-05,0.000000E+00,
-    1.287394E-04,5.018934E-05,0.000000E+00,
-    9.172477E-05,3.582218E-05,0.000000E+00,
-    6.577532E-05,2.573083E-05,0.000000E+00,
-    4.708916E-05,1.845353E-05,0.000000E+00,
-    3.407653E-05,1.337946E-05,0.000000E+00,
-    2.469630E-05,9.715798E-06,0.000000E+00,
-    1.794555E-05,7.074424E-06,0.000000E+00,
-    1.306345E-05,5.160948E-06,0.000000E+00,
-    9.565993E-06,3.788729E-06,0.000000E+00,
-    7.037621E-06,2.794625E-06,0.000000E+00,
-    5.166853E-06,2.057152E-06,0.000000E+00,
-    3.815429E-06,1.523114E-06,0.000000E+00,
-    2.837980E-06,1.135758E-06,0.000000E+00,
-    2.113325E-06,8.476168E-07,0.000000E+00,
-    1.579199E-06,6.345380E-07,0.000000E+00
+	1.222E-07,1.3398E-08,5.35027E-07, 
+	9.1927E-07,1.0065E-07,4.0283E-06, 
+	5.9586E-06,6.511E-07,2.61437E-05, 
+	0.000033266,0.000003625,0.00014622, 
+	0.000159952,0.000017364,0.000704776, 
+	0.00066244,0.00007156,0.0029278, 
+	0.0023616,0.0002534,0.0104822, 
+	0.0072423,0.0007685,0.032344, 
+	0.0191097,0.0020044,0.0860109, 
+	0.0434,0.004509,0.19712, 
+	0.084736,0.008756,0.389366, 
+	0.140638,0.014456,0.65676, 
+	0.204492,0.021391,0.972542, 
+	0.264737,0.029497,1.2825, 
+	0.314679,0.038676,1.55348, 
+	0.357719,0.049602,1.7985, 
+	0.383734,0.062077,1.96728, 
+	0.386726,0.074704,2.0273, 
+	0.370702,0.089456,1.9948, 
+	0.342957,0.106256,1.9007, 
+	0.302273,0.128201,1.74537, 
+	0.254085,0.152761,1.5549, 
+	0.195618,0.18519,1.31756, 
+	0.132349,0.21994,1.0302, 
+	0.080507,0.253589,0.772125, 
+	0.041072,0.297665,0.57006, 
+	0.016172,0.339133,0.415254, 
+	0.005132,0.395379,0.302356, 
+	0.003816,0.460777,0.218502, 
+	0.015444,0.53136,0.159249, 
+	0.037465,0.606741,0.112044, 
+	0.071358,0.68566,0.082248, 
+	0.117749,0.761757,0.060709, 
+	0.172953,0.82333,0.04305, 
+	0.236491,0.875211,0.030451, 
+	0.304213,0.92381,0.020584, 
+	0.376772,0.961988,0.013676, 
+	0.451584,0.9822,0.007918, 
+	0.529826,0.991761,0.003988, 
+	0.616053,0.99911,0.001091, 
+	0.705224,0.99734,0, 
+	0.793832,0.98238,0, 
+	0.878655,0.955552,0, 
+	0.951162,0.915175,0, 
+	1.01416,0.868934,0, 
+	1.0743,0.825623,0, 
+	1.11852,0.777405,0, 
+	1.1343,0.720353,0, 
+	1.12399,0.658341,0, 
+	1.0891,0.593878,0, 
+	1.03048,0.527963,0, 
+	0.95074,0.461834,0, 
+	0.856297,0.398057,0, 
+	0.75493,0.339554,0, 
+	0.647467,0.283493,0, 
+	0.53511,0.228254,0, 
+	0.431567,0.179828,0, 
+	0.34369,0.140211,0, 
+	0.268329,0.107633,0, 
+	0.2043,0.081187,0, 
+	0.152568,0.060281,0, 
+	0.11221,0.044096,0, 
+	0.0812606,0.0318004,0, 
+	0.05793,0.0226017,0, 
+	0.0408508,0.0159051,0, 
+	0.028623,0.0111303,0, 
+	0.0199413,0.0077488,0, 
+	0.013842,0.0053751,0, 
+	0.00957688,0.00371774,0, 
+	0.0066052,0.00256456,0, 
+	0.00455263,0.00176847,0, 
+	0.0031447,0.00122239,0, 
+	0.00217496,0.00084619,0, 
+	0.0015057,0.00058644,0, 
+	0.00104476,0.00040741,0, 
+	0.00072745,0.000284041,0, 
+	0.000508258,0.00019873,0, 
+	0.00035638,0.00013955,0, 
+	0.000250969,0.000098428,0, 
+	0.00017773,0.000069819,0, 
+	0.00012639,0.000049737,0, 
+	0.000090151,3.55405E-05,0, 
+	6.45258E-05,0.000025486,0, 
+	0.000046339,1.83384E-05,0, 
+	3.34117E-05,0.000013249,0, 
+	0.000024209,9.6196E-06,0, 
+	1.76115E-05,7.0128E-06,0, 
+	0.000012855,5.1298E-06,0, 
+	9.41363E-06,3.76473E-06,0, 
+	0.000006913,2.77081E-06,0, 
+	5.09347E-06,2.04613E-06,0, 
+	3.7671E-06,1.51677E-06,0, 
+	2.79531E-06,1.12809E-06,0, 
+	0.000002082,8.4216E-07,0, 
+	1.55314E-06,6.297E-07,0, 
 };
 
 
@@ -443,12 +460,12 @@ Accel accel;
 
 
 const float eps = 0.005f;
-Vec3 getRadiance(const Ray& ray, double wave_length, int depth = 0, float roulette = 1.0f) {
+Spectrum getRadiance(const Ray& ray, double wave_length, int depth = 0, float roulette = 1.0f) {
     if(depth > 10) {
         roulette *= 0.9f;
     }
     if(rnd() >= roulette) {
-        return Vec3(0, 0, 0);
+        return 0;
     }
 
     Hit res;
@@ -458,54 +475,58 @@ Vec3 getRadiance(const Ray& ray, double wave_length, int depth = 0, float roulet
             Vec3 nextDir = randomCosineHemisphere(pdf, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
             float cos_term = std::max(dot(nextDir, res.hitNormal), 0.0f);
-            return 1/roulette * 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, depth + 1, roulette);
+            return 1/roulette * 1/pdf * res.hitSphere->color/M_PI * cos_term * getRadiance(nextRay, wave_length, depth + 1, roulette);
         }
         else if(res.hitSphere->type == "mirror") {
             Vec3 nextDir = reflect(ray.direction, res.hitNormal);
             Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
-            return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+            return 1/roulette * res.hitSphere->color * getRadiance(nextRay, wave_length, depth + 1, roulette);
         }
         else if(res.hitSphere->type == "glass") {
             if(!res.inside) {
-                float fr = fresnel(-ray.direction, res.hitNormal, 1.0f, 1.4f);
+                float n1 = 1.0f;
+                float n2 = SCHOTT_F(wave_length);
+                float fr = fresnel(-ray.direction, res.hitNormal, n1, n2);
                 //reflect
                 if(rnd() < fr) {
                     Vec3 nextDir = reflect(ray.direction, res.hitNormal);
                     Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
-                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, wave_length, depth + 1, roulette);
                 }
                 else {
                     Vec3 nextDir;
-                    if(refract(ray.direction, res.hitNormal, 1.0f, 1.4f, nextDir)) {
+                    if(refract(ray.direction, res.hitNormal, n1, n2, nextDir)) {
                         Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
-                        return 1/roulette * std::pow(1.4f/1.0f, 2.0f) * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                        return 1/roulette * std::pow(n2/n1, 2.0f) * res.hitSphere->color * getRadiance(nextRay, wave_length, depth + 1, roulette);
                     }
                     else {
                         std::cerr << "Something Wrong!!" << std::endl;
-                        return Vec3(0, 0, 0);
+                        return 0;
                     }
                 }
             }
             else {
-                float fr = fresnel(-ray.direction, -res.hitNormal, 1.4f, 1.0f);
+                float n1 = SCHOTT_F(wave_length);
+                float n2 = 1.0f;
+                float fr = fresnel(-ray.direction, -res.hitNormal, n1, n2);
                 //reflect
                 if(rnd() < fr) {
                     Vec3 nextDir = reflect(ray.direction, -res.hitNormal);
                     Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
-                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                    return 1/roulette * res.hitSphere->color * getRadiance(nextRay, wave_length, depth + 1, roulette);
                 }
                 //refract
                 else {
                     Vec3 nextDir;
-                    if(refract(ray.direction, -res.hitNormal, 1.4f, 1.0f, nextDir)) {
+                    if(refract(ray.direction, -res.hitNormal, n1, n2, nextDir)) {
                         Ray nextRay(res.hitPos + eps*res.hitNormal, nextDir);
-                        return 1/roulette * std::pow(1.0f/1.4f, 2.0f) * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                        return 1/roulette * std::pow(n2/n1, 2.0f) * res.hitSphere->color * getRadiance(nextRay, wave_length, depth + 1, roulette);
                     }
                     //total reflection
                     else {
                         nextDir = reflect(ray.direction, -res.hitNormal);
                         Ray nextRay(res.hitPos - eps*res.hitNormal, nextDir);
-                        return 1/roulette * res.hitSphere->color * getRadiance(nextRay, depth + 1, roulette);
+                        return 1/roulette * res.hitSphere->color * getRadiance(nextRay, wave_length, depth + 1, roulette);
                     }
                 }
             }
@@ -514,11 +535,11 @@ Vec3 getRadiance(const Ray& ray, double wave_length, int depth = 0, float roulet
             return res.hitSphere->color;
         }
         else {
-            return Vec3(0, 0, 0);
+            return 0;
         }
     }
     else {
-        return Vec3(0, 0, 0);
+        return 0.03;
     }
 }
 
@@ -564,21 +585,21 @@ int main(int argc, char** argv) {
     Camera cam(Vec3(0, 1, 0), Vec3(0, 0, 1));
 
     //Walls
-    accel.add(std::make_shared<Sphere>(Vec3(0, -10000, 0), 10000, "diffuse", Vec3(0.8)));
-    accel.add(std::make_shared<Sphere>(Vec3(0, 10003, 0), 10000, "diffuse", Vec3(0.8)));
-    accel.add(std::make_shared<Sphere>(Vec3(10001.5, 0, 0), 10000, "diffuse", Vec3(0.25, 0.5, 1.0)));
-    accel.add(std::make_shared<Sphere>(Vec3(-10001.5, 0, 0), 10000, "diffuse", Vec3(1.0, 0.3, 0.3)));
-    accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", Vec3(0.8)));
+    accel.add(std::make_shared<Sphere>(Vec3(0, -10000, 0), 10000, "diffuse", 0.8));
+    //accel.add(std::make_shared<Sphere>(Vec3(0, 10003, 0), 10000, "diffuse", 0.8));
+    //accel.add(std::make_shared<Sphere>(Vec3(10001.5, 0, 0), 10000, "diffuse", 0.8));
+    //accel.add(std::make_shared<Sphere>(Vec3(-10001.5, 0, 0), 10000, "diffuse", 0.8));
+    //accel.add(std::make_shared<Sphere>(Vec3(0, 0, 10005), 10000, "diffuse", 0.8));
     
     //Light
-    accel.add(std::make_shared<Sphere>(Vec3(0, 2.0, 2.5), 0.1, "light", Vec3(70)));
+    //accel.add(std::make_shared<Sphere>(Vec3(0, 3.0, 2.5), 0.5, "light", 0.1));
 
     //Spheres
-    accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(1.0)));
-    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(1.0)));
+    accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", 1.0));
+    accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "glass", 1.0));
 
     //波長の分割数
-    const int wl_count = 30;
+    const int wl_count = 95;
     float wl_pdf[wl_count];
     float wl_cdf[wl_count];
 
@@ -608,15 +629,18 @@ int main(int argc, char** argv) {
                 float u = (2.0*(i + rnd()) - img.width)/img.width;
                 float v = (2.0*(j + rnd()) - img.height)/img.height;
                 Ray ray = cam.getRay(u, v);
-                Vec3 color = getRadiance(ray);
-                if(std::isnan(color.x) || std::isnan(color.y) || std::isnan(color.z)) {
-                    std::cout << "nan detected" << std::endl;
-                    color = Vec3(0, 0, 0);
-                }
-                if(color.x < 0 || color.y < 0 || color.z < 0) {
-                    std::cout << "minus detected" << std::endl;
-                    color = Vec3(0, 0, 0);
-                }
+
+                //波長の重点的サンプリング
+                //int wl_index = std::lower_bound(wl_cdf, wl_cdf + wl_count, rnd()) - wl_cdf;
+                //if(wl_index >= wl_count) wl_index = wl_count - 1;
+                //float wave_length_pdf = wl_pdf[wl_index];
+                int wl_index = (int)(wl_count*rnd());
+                float wave_length = (wl_index * 5 + 360)/1000.0;
+
+                Spectrum spec = getRadiance(ray, wave_length)*wl_count;
+                Vec3 xyz = Vec3(wavelength_to_xyz[3*wl_index], wavelength_to_xyz[3*wl_index + 1], wavelength_to_xyz[3*wl_index + 2])*spec;
+                Vec3 color = xyz_to_rgb(xyz);
+
                 img.setPixel(i, j, img.getPixel(i, j) + color);
             }
         }
