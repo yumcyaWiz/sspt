@@ -577,6 +577,30 @@ int main(int argc, char** argv) {
     accel.add(std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(1.0)));
     accel.add(std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(1.0)));
 
+    //波長の分割数
+    const int wl_count = 30;
+    float wl_pdf[wl_count];
+    float wl_cdf[wl_count];
+
+    //Y成分＝輝度成分
+    float wl_luminance[wl_count];
+    for(int i = 0; i < wl_count; i++) {
+        wl_luminance[i] = wavelength_to_xyz[3*i + 1];
+    }
+
+    //波長ごとの輝度のc.d.fとp.d.fを作る
+    float luminance_sum = 0;
+    for(int i = 0; i < wl_count; i++) {
+        luminance_sum += wl_luminance[i];
+        wl_cdf[i] = luminance_sum;
+        wl_pdf[i] = wl_luminance[i];
+    }
+    for(int i = 0; i < wl_count; i++) {
+        wl_cdf[i] /= luminance_sum;
+        wl_pdf[i] /= luminance_sum;
+    }
+
+
     for(int k = 0; k < samples; k++) {
         for(int i = 0; i < img.width; i++) {
 #pragma omp parallel for schedule(dynamic, 1)
