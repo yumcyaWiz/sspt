@@ -551,13 +551,13 @@ int main(int argc, char** argv) {
     accel.add(std::make_shared<Sphere>(Vec3(0, 0, -10005), 10000, "diffuse", Vec3(0.8)));
     
     //Light
-    auto p = std::make_shared<Sphere>(Vec3(0, 2.0, 2.5), 0.5, "light", Vec3(5));
+    auto p = std::make_shared<Sphere>(Vec3(0, 2.5, 2.5), 0.2, "light", Vec3(30));
     accel.add(p);
     light.add(p);
 
     //Spheres
-    auto sphere1 = std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "diffuse", Vec3(0.8));
-    auto sphere2 = std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "diffuse", Vec3(1.0));
+    auto sphere1 = std::make_shared<Sphere>(Vec3(-0.7, 0.5, 3.0), 0.5, "mirror", Vec3(1.0));
+    auto sphere2 = std::make_shared<Sphere>(Vec3(0.7, 0.5, 2.5), 0.5, "glass", Vec3(1.0));
     accel.add(sphere1);
     accel.add(sphere2);
 
