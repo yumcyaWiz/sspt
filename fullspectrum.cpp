@@ -345,8 +345,7 @@ inline float SCHOTT_BK7(float l) {
     return std::sqrt(1 + 1.03961212*l*l/(l*l - 0.00600069867) + 0.231792344*l*l/(l*l - 0.0200179144) + 1.01046945*l*l/(l*l - 103.560653));
 }
 inline float SCHOTT_F(float l) {
-    float v = std::sqrt(1 + 1.34533359*l*l/(l*l - 0.00997743871) + 0.209073176*l*l/(l*l - 0.0470450767) + 0.937357162*l*l/(l*l - 111.886764));
-    return v*v*v/(1.5*1.5*1.5);
+    return std::sqrt(1 + 1.34533359*l*l/(l*l - 0.00997743871) + 0.209073176*l*l/(l*l - 0.0470450767) + 0.937357162*l*l/(l*l - 111.886764));
 }
 
 
@@ -537,7 +536,7 @@ Spectrum getRadiance(const Ray& ray, double wave_length, int depth = 0, float ro
         }
     }
     else {
-        return 0.2*std::pow(dot(ray.direction, normalize(Vec3(1, 1, 1))), 32.0);
+        return std::pow(dot(ray.direction, normalize(Vec3(1, 1, 1))), 32.0);
     }
 }
 
@@ -632,11 +631,10 @@ int main(int argc, char** argv) {
                 int wl_index = std::lower_bound(wl_cdf, wl_cdf + wl_count, rnd()) - wl_cdf;
                 if(wl_index >= wl_count) wl_index = wl_count - 1;
                 float wave_length_pdf = wl_pdf[wl_index];
-                //int wl_index = (int)(wl_count*rnd());
                 float wave_length = (wl_index * 5 + 360)/1000.0;
 
                 Spectrum spec = getRadiance(ray, wave_length)/wave_length_pdf;
-                Vec3 xyz = Vec3(wavelength_to_xyz[3*wl_index], wavelength_to_xyz[3*wl_index + 1], wavelength_to_xyz[3*wl_index + 2])*spec;
+                Vec3 xyz = 1.0/(luminance_sum*5)*Vec3(5*wavelength_to_xyz[3*wl_index], 5*wavelength_to_xyz[3*wl_index + 1], 5*wavelength_to_xyz[3*wl_index + 2])*spec;
                 Vec3 color = xyz_to_rgb(xyz);
 
                 if(color.x < 0 || std::isnan(color.x)) color.x = 0;
